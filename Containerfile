@@ -1,4 +1,4 @@
-FROM docker.io/library/python:3.13-alpine
+FROM docker.io/library/python:3.14-alpine
 
 ARG TARGETARCH
 ARG HEIMDALL_VERSION=v2.7.4
