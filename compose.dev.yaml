@@ -26,4 +26,3 @@ services:
       - HEIMDALL_HUB=heimdall-hub:9090
     depends_on:
       - heimdall-hub
-    command: ["--fleet", "--port", "/dev/ttyACM0", "--interval", "1", "--clear"]
