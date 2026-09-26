@@ -15,28 +15,20 @@ turmo/
   image_ops.py       # normalize, fit, rotate, margins, color cleanup
   gif.py             # GIF frame decoding/preparation
   renderers.py       # dashboard and test-pattern renderers
-  metrics.py         # psutil/nvidia-smi metrics
+  metrics.py         # psutil/nvidia-smi metrics + Heimdall fleet query
   ports.py           # serial port discovery
   frame.py           # chooses dashboard/image/test frame
   core.py            # compatibility façade for old imports
-  sources/           # future source abstraction for dashboard/GIF/screen capture
 turmo_lite.py        # old CLI name, now a small wrapper
 turmo_gui.py         # old GUI name, now a small wrapper
 ```
 
-## Why this is better before screen streaming
+## Send pipeline
 
-Screen streaming should not be added inside one giant CLI or GUI loop. The clean
-future shape is:
-
-1. `sources/screen.py` captures the desktop and returns PIL images.
-2. `image_ops.py` resizes/rotates/normalizes frames into the exact framebuffer.
-3. `codecs.py` converts the image into the selected pixel format.
-4. `serial_device.py` sends it through RevA or legacy protocol.
-5. CLI/GUI only choose settings and start/stop the sender.
-
-This means GIF, static images, dashboard, test-pattern and future screen capture
-all use the same send pipeline.
+Every frame source (dashboard, image, GIF, test pattern) goes through the same
+path: `image_ops.py` normalizes/fits/rotates into the exact framebuffer size,
+`codecs.py` encodes pixels, `serial_device.py` sends it through RevA or legacy
+protocol. CLI/GUI only choose settings and start/stop the sender.
 
 ## Compatibility
 
