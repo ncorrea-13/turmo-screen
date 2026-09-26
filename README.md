@@ -74,6 +74,44 @@ Reads `HEIMDALL_HUB` (default `localhost:9090`) and `HEIMDALL_TOKEN` from the en
 needs `heimdall-cli` on `$PATH`. See [Development](#development-container) /
 [Production](#production-container) below for the containerized setup.
 
+### Daemon setup on each host
+
+On every machine you want turmo to show, run `heimdall-daemon` pointed at the hub. Keep the
+token out of the command line (same reasoning as the fix in `fetch_fleet_hosts`) — use an
+env file, not `--token`:
+
+```bash
+mkdir -p ~/.config/heimdall
+printf 'HEIMDALL_TOKEN=<same-token-as-the-hub>\n' > ~/.config/heimdall/daemon.env
+chmod 600 ~/.config/heimdall/daemon.env
+
+curl -fsSL https://github.com/kinncj/Heimdall/releases/download/v2.7.4/heimdall-daemon_linux_<arch> -o ~/.local/bin/heimdall-daemon
+chmod +x ~/.local/bin/heimdall-daemon
+```
+
+`~/.config/systemd/user/heimdall-daemon.service`:
+
+```ini
+[Unit]
+Description=Heimdall daemon
+
+[Service]
+EnvironmentFile=%h/.config/heimdall/daemon.env
+ExecStart=%h/.local/bin/heimdall-daemon --hub <hub-host>:9090 --name %H
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+```
+
+```bash
+systemctl --user enable --now heimdall-daemon.service
+loginctl enable-linger "$USER"   # starts on boot without an active login session
+```
+
+TLS (`--tls`/`--tls-ca`) is optional here if the hub is only reachable over Tailscale — the
+mesh already encrypts the transport. Add it if the hub is reachable over a less trusted network.
+
 ## GIF support
 
 GUI: **Open GIF** → choose a `.gif` → set **GIF FPS** (`3–8` recommended) → **Play GIF** → **Stop** to end the loop.
