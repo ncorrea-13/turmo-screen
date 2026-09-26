@@ -7,7 +7,13 @@ from datetime import datetime
 
 from PIL import Image, ImageDraw, ImageFont
 
-from .metrics import collect_metrics
+from .metrics import collect_metrics, fetch_fleet_hosts
+
+STATE_COLORS = {
+    "online": (70, 210, 130),
+    "stale": (230, 190, 60),
+    "offline": (220, 70, 70),
+}
 
 def safe_font(size: int, bold: bool = False) -> ImageFont.ImageFont:
     names = [
@@ -71,6 +77,46 @@ def render_dashboard(width: int, height: int, title: str = "TURMO Linux") -> Ima
     draw.text((right_x, card_top + 18), "NET", font=mid_font, fill=(235, 240, 255))
     draw.text((right_x, card_top + 48), f"↓ {m.net_down_kb:.0f} KB/s", font=tiny_font, fill=(190, 210, 240))
     draw.text((right_x, card_top + 72), f"↑ {m.net_up_kb:.0f} KB/s", font=tiny_font, fill=(190, 210, 240))
+
+    return img
+
+def render_fleet_dashboard(width: int, height: int, title: str = "Homelab Fleet") -> Image.Image:
+    hosts = sorted(fetch_fleet_hosts(), key=lambda h: h.get("id", ""))
+    img = Image.new("RGB", (width, height), (7, 10, 18))
+    draw = ImageDraw.Draw(img)
+
+    title_font = safe_font(max(18, width // 14), bold=True)
+    name_font = safe_font(max(13, width // 22), bold=True)
+    small_font = safe_font(max(11, width // 28))
+
+    draw.rounded_rectangle((12, 12, width - 12, 62), radius=18, fill=(16, 23, 38), outline=(48, 70, 110), width=2)
+    draw.text((26, 20), title, font=title_font, fill=(245, 248, 255))
+
+    if not hosts:
+        draw.text((26, 90), "No hosts (hub unreachable)", font=small_font, fill=(200, 120, 120))
+        return img
+
+    row_h = max(46, (height - 76) // len(hosts))
+    y = 74
+    for host in hosts:
+        state = host.get("state", "unknown")
+        color = STATE_COLORS.get(state, (120, 130, 150))
+        metrics = host.get("metrics") or {}
+        cpu = metrics.get("cpu.util")
+        mem = metrics.get("mem.used")
+        disk = metrics.get("disk.used")
+
+        draw.rounded_rectangle((16, y, width - 16, y + row_h - 8), radius=12, fill=(16, 23, 38), outline=(48, 70, 110), width=2)
+        dot_y = y + 16
+        draw.ellipse((28, dot_y, 40, dot_y + 12), fill=color)
+        draw.text((48, y + 8), str(host.get("id", "?")), font=name_font, fill=(235, 240, 255))
+
+        def fmt(label: str, value) -> str:
+            return f"{label} {value:.0f}%" if isinstance(value, (int, float)) else f"{label} --"
+
+        stat = f"{fmt('CPU', cpu)}  {fmt('MEM', mem)}  {fmt('DISK', disk)}"
+        draw.text((48, y + 8 + name_font.size + 2), stat, font=small_font, fill=(190, 210, 240))
+        y += row_h
 
     return img
 
