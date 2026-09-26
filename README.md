@@ -4,10 +4,12 @@
 
 **Modular Linux sender + PySide6 GUI for TURMO / UsbMonitor / Turing-style 3.5" USB serial screens**
 
-[![CI](https://github.com/ncorrea-13/turmo-linux-ui-modular/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ncorrea-13/turmo-linux-ui-modular/actions/workflows/ci.yml)
+[![CI](https://github.com/ncorrea-13/turmo-screen/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ncorrea-13/turmo-screen/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white)](https://www.python.org)
-[![Podman/Docker](https://img.shields.io/badge/Container-GHCR-2496ED?logo=docker&logoColor=white)](https://github.com/ncorrea-13?tab=packages&repo_name=turmo-linux-ui-modular)
+[![Podman/Docker](https://img.shields.io/badge/Container-GHCR-2496ED?logo=docker&logoColor=white)](https://github.com/ncorrea-13?tab=packages&repo_name=turmo-screen)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](#license)
+
+[Español](README.es.md)
 
 </div>
 
@@ -38,7 +40,7 @@ More: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 ## Quick start
 
 ```bash
-cd ~/Downloads/turmo-linux-ui-modular
+cd ~/Downloads/turmo-screen
 ./install.sh        # creates .venv, installs requirements.txt
 ./run_gui.sh
 ```
@@ -120,7 +122,7 @@ tagged `latest`, `<branch>`, and `<sha>` at `ghcr.io/<owner>/<repo>`.
 ```yaml
 services:
   turmo:
-    image: ghcr.io/ncorrea-13/turmo-linux-ui-modular:latest
+    image: ghcr.io/ncorrea-13/turmo-screen:latest
     container_name: turmo
     restart: unless-stopped
     devices:
