@@ -1,0 +1,29 @@
+services:
+  heimdall-hub:
+    build:
+      context: .
+      dockerfile: heimdall-hub.Containerfile
+    container_name: turmo-dev-heimdall-hub
+
+  heimdall-daemon:
+    build:
+      context: .
+      dockerfile: heimdall-hub.Containerfile
+    container_name: turmo-dev-heimdall-daemon
+    entrypoint: ["heimdall-daemon"]
+    command: ["--hub", "heimdall-hub:9090", "--name", "dev-container"]
+    depends_on:
+      - heimdall-hub
+
+  turmo:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: turmo-dev
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0
+    environment:
+      - HEIMDALL_HUB=heimdall-hub:9090
+    depends_on:
+      - heimdall-hub
+    command: ["--fleet", "--port", "/dev/ttyACM0", "--interval", "1", "--clear"]

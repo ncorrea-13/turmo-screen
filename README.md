@@ -89,6 +89,18 @@ python turmo_lite.py --test-pattern --once
 - Real implementation lives in the `turmo/` package. See `ARCHITECTURE.md`.
 - GIF playback currently sends full frames for reliability. Partial-window GIF updates can be added later after the RevA protocol is fully stable on the device.
 
+## Development (container)
+
+`compose.dev.yaml` builds `heimdall-hub` + `heimdall-daemon` (self-monitoring the dev
+container, just to have a fleet to look at) + `turmo` from local sources — no image
+registry needed:
+
+```bash
+podman-compose -f compose.dev.yaml up --build
+```
+
+Rebuild after code changes with `--build` again. Needs `/dev/ttyACM0` present on the host.
+
 ## Production (container)
 
 CI builds and pushes the image on every push to `main` (see `.github/workflows/ci.yml`),
