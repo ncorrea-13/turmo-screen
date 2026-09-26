@@ -15,8 +15,12 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.13"
+      - name: Install dependencies
+        run: pip install -r requirements-docker.txt
       - name: Compile check
         run: python -m compileall turmo turmo_lite.py turmo_gui.py
+      - name: Test
+        run: python -m unittest discover tests -v
 
   docker:
     needs: build
