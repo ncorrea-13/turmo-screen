@@ -3,3 +3,14 @@ __pycache__/
 *.pyc
 gif_first.png
 preview.png
+
+# Credentials
+.env
+
+# Editor & OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
