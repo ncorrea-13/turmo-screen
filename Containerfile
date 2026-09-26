@@ -1,15 +1,13 @@
-FROM docker.io/library/python:3.13-slim
+FROM docker.io/library/python:3.13-alpine
 
 ARG TARGETARCH
 ARG HEIMDALL_VERSION=v2.7.4
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends fonts-dejavu-core curl ca-certificates \
+RUN apk add --no-cache font-dejavu ca-certificates \
+    && apk add --no-cache --virtual .fetch curl \
     && curl -fsSL "https://github.com/kinncj/Heimdall/releases/download/${HEIMDALL_VERSION}/heimdall-cli_linux_${TARGETARCH}" -o /usr/local/bin/heimdall-cli \
     && chmod +x /usr/local/bin/heimdall-cli \
-    && apt-get purge -y curl \
-    && apt-get autoremove -y \
-    && rm -rf /var/lib/apt/lists/*
+    && apk del .fetch
 
 WORKDIR /app
 COPY requirements-docker.txt .
