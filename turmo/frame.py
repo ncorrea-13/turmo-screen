@@ -7,7 +7,7 @@ import argparse
 from PIL import Image
 
 from .image_ops import apply_safe_margin, maybe_rotate, normalize_color_space, prepare_external_image, roll_framebuffer
-from .renderers import render_dashboard, render_test_pattern
+from .renderers import render_dashboard, render_fleet_dashboard, render_test_pattern
 
 def make_frame(args: argparse.Namespace) -> Image.Image:
     bg = args.bg
@@ -31,6 +31,8 @@ def make_frame(args: argparse.Namespace) -> Image.Image:
         return roll_framebuffer(img, args.roll_x, args.roll_y)
     elif args.test_pattern:
         img = render_test_pattern(args.width, args.height)
+    elif args.fleet:
+        img = render_fleet_dashboard(args.width, args.height, args.title)
     else:
         img = render_dashboard(args.width, args.height, args.title)
 
