@@ -75,6 +75,44 @@ Lee `HEIMDALL_HUB` (default `localhost:9090`) y `HEIMDALL_TOKEN` del entorno; ne
 `heimdall-cli` en el `$PATH`. Ver [Desarrollo](#desarrollo-container) /
 [Producción](#producción-container) más abajo para el setup en container.
 
+### Setup del daemon en cada máquina
+
+En cada máquina que quieras que turmo muestre, corré `heimdall-daemon` apuntando al hub.
+Mantené el token fuera de la línea de comando (mismo motivo que el fix de `fetch_fleet_hosts`)
+— usá un archivo de entorno, no `--token`:
+
+```bash
+mkdir -p ~/.config/heimdall
+printf 'HEIMDALL_TOKEN=<mismo-token-que-el-hub>\n' > ~/.config/heimdall/daemon.env
+chmod 600 ~/.config/heimdall/daemon.env
+
+curl -fsSL https://github.com/kinncj/Heimdall/releases/download/v2.7.4/heimdall-daemon_linux_<arch> -o ~/.local/bin/heimdall-daemon
+chmod +x ~/.local/bin/heimdall-daemon
+```
+
+`~/.config/systemd/user/heimdall-daemon.service`:
+
+```ini
+[Unit]
+Description=Heimdall daemon
+
+[Service]
+EnvironmentFile=%h/.config/heimdall/daemon.env
+ExecStart=%h/.local/bin/heimdall-daemon --hub <host-del-hub>:9090 --name %H
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+```
+
+```bash
+systemctl --user enable --now heimdall-daemon.service
+loginctl enable-linger "$USER"   # arranca al boot sin sesión activa
+```
+
+TLS (`--tls`/`--tls-ca`) es opcional acá si el hub solo es alcanzable por Tailscale — la mesh
+ya encripta el transporte. Agregalo si el hub queda expuesto en una red menos confiable.
+
 ## Soporte de GIF
 
 GUI: **Open GIF** → elegí un `.gif` → seteá **GIF FPS** (recomendado `3–8`) → **Play GIF** → **Stop** para cortar el loop.
