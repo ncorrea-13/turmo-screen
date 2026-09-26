@@ -71,6 +71,13 @@ class TurmoSerial:
     # ------------------------------------------------------------------
     # RevA / Turing Smart Screen 3.5" protocol
     # ------------------------------------------------------------------
+    # Command set and coordinate-packing below are reimplemented from
+    # LcdCommRevA in turing-smart-screen-python:
+    #   https://github.com/mathoudebine/turing-smart-screen-python
+    #   Copyright (C) 2021 Matthieu Houdebine (mathoudebine)
+    #   Licensed GPL-3.0-or-later; this file (and this repo) inherits that
+    #   license as a combined work. See LICENSE.
+    #
     # The official 3.5" Turing/UsbMonitor serial protocol does NOT use the
     # 0x13/0x17 raw frame-size commands. It sends a compact 6-byte command
     # with packed coordinates, then RGB565LE pixel data. The important command
