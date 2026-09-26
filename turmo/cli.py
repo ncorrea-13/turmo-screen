@@ -42,6 +42,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     parser.add_argument("--raw-prefix-pixels", type=int, default=0, help="send this many black pixels before the real frame; calibration only")
     parser.add_argument("--raw-tail-pixels", type=int, default=0, help="send this many black pixels after the real frame to stabilize cursor drift; calibration only")
     parser.add_argument("--test-pattern", action="store_true", help="send color bars instead of dashboard")
+    parser.add_argument("--fleet", action="store_true", help="show Heimdall fleet status instead of local dashboard; reads HEIMDALL_HUB/HEIMDALL_TOKEN env vars")
     parser.add_argument("--image", help="send PNG/JPG/WebP image; it will be normalized, resized and padded into the full frame")
     parser.add_argument("--gif", help="play animated GIF; frames are normalized/resized/padded into the full frame")
     parser.add_argument("--gif-fps", type=float, default=8.0, help="override GIF speed, default 8 FPS; use 0 for original delays")
