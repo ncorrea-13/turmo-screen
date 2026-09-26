@@ -70,8 +70,11 @@ python turmo_lite.py --gif sample_spinner.gif --dry-run gif_first.png
 ## Image examples
 
 ```bash
-python turmo_lite.py --image picture.png --pink-bg --green-to-bg --red-to-blue --force-black --once
+python turmo_lite.py --image your_image.png --fit contain --once
 ```
+
+`--pink-bg`/`--green-to-bg`/`--red-to-blue`/`--force-black` are optional color-cleanup
+flags for images with a chroma-key background; see `python turmo_lite.py --help`.
 
 ## Test pattern
 
@@ -114,3 +117,11 @@ Notes:
 - `HEIMDALL_HUB`/`HEIMDALL_TOKEN` are read by `turmo/metrics.py:fetch_fleet_hosts`; omit `HEIMDALL_TOKEN` if the hub has no token configured.
 - Default entrypoint runs `--fleet --port /dev/ttyACM0` (see `Containerfile`); override `command:` for a different mode.
 - No GUI in this image (`PySide6` dropped, see `requirements-docker.txt`) — headless dashboard only.
+
+## License
+
+GPL-3.0-or-later (see `LICENSE`). The RevA serial protocol in
+`turmo/serial_device.py` is reimplemented from
+[turing-smart-screen-python](https://github.com/mathoudebine/turing-smart-screen-python)
+by Matthieu Houdebine (GPL-3.0-or-later); as a combined work, this repo carries
+the same license. See `NOTICE.md` for full provenance.
