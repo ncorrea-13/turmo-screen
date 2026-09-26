@@ -80,42 +80,67 @@ def render_dashboard(width: int, height: int, title: str = "TURMO Linux") -> Ima
 
     return img
 
+def humanize_uptime(seconds) -> str:
+    if not isinstance(seconds, (int, float)):
+        return "--"
+    seconds = int(seconds)
+    days, rem = divmod(seconds, 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes, _ = divmod(rem, 60)
+    if days:
+        return f"{days}d {hours}h"
+    if hours:
+        return f"{hours}h {minutes}m"
+    return f"{minutes}m"
+
+def _fmt_pct(value) -> str:
+    return f"{value:.0f}%" if isinstance(value, (int, float)) else "--"
+
 def render_fleet_dashboard(width: int, height: int, title: str = "Homelab Fleet") -> Image.Image:
     hosts = sorted(fetch_fleet_hosts(), key=lambda h: h.get("id", ""))
     img = Image.new("RGB", (width, height), (7, 10, 18))
     draw = ImageDraw.Draw(img)
 
-    title_font = safe_font(max(18, width // 14), bold=True)
+    title_font = safe_font(max(13, width // 26), bold=True)
     name_font = safe_font(max(13, width // 22), bold=True)
-    small_font = safe_font(max(11, width // 28))
+    small_font = safe_font(max(10, width // 32))
 
-    draw.rounded_rectangle((12, 12, width - 12, 62), radius=18, fill=(16, 23, 38), outline=(48, 70, 110), width=2)
-    draw.text((26, 20), title, font=title_font, fill=(245, 248, 255))
+    header_bottom = 38
+    draw.rounded_rectangle((12, 8, width - 12, header_bottom), radius=12, fill=(16, 23, 38), outline=(48, 70, 110), width=2)
+    draw.text((20, 12), title, font=title_font, fill=(245, 248, 255))
 
     if not hosts:
-        draw.text((26, 90), "No hosts (hub unreachable)", font=small_font, fill=(200, 120, 120))
+        draw.text((26, header_bottom + 16), "No hosts (hub unreachable)", font=small_font, fill=(200, 120, 120))
         return img
 
-    row_h = max(46, (height - 76) // len(hosts))
-    y = 74
+    top = header_bottom + 8
+    row_min = 12 + name_font.size + small_font.size * 2 + 10
+    row_h = max(row_min, (height - top - 6) // len(hosts))
+    y = top
     for host in hosts:
         state = host.get("state", "unknown")
         color = STATE_COLORS.get(state, (120, 130, 150))
         metrics = host.get("metrics") or {}
-        cpu = metrics.get("cpu.util")
-        mem = metrics.get("mem.used")
-        disk = metrics.get("disk.used")
 
-        draw.rounded_rectangle((16, y, width - 16, y + row_h - 8), radius=12, fill=(16, 23, 38), outline=(48, 70, 110), width=2)
-        dot_y = y + 16
-        draw.ellipse((28, dot_y, 40, dot_y + 12), fill=color)
-        draw.text((48, y + 8), str(host.get("id", "?")), font=name_font, fill=(235, 240, 255))
+        draw.rounded_rectangle((16, y, width - 16, y + row_h - 6), radius=10, fill=(16, 23, 38), outline=(48, 70, 110), width=2)
+        dot_y = y + 14
+        draw.ellipse((26, dot_y, 36, dot_y + 10), fill=color)
+        draw.text((42, y + 6), str(host.get("id", "?")), font=name_font, fill=(235, 240, 255))
 
-        def fmt(label: str, value) -> str:
-            return f"{label} {value:.0f}%" if isinstance(value, (int, float)) else f"{label} --"
+        line2_y = y + 6 + name_font.size + 2
+        stat = f"CPU {_fmt_pct(metrics.get('cpu.util'))}  MEM {_fmt_pct(metrics.get('mem.used'))}  DISK {_fmt_pct(metrics.get('disk.used'))}"
+        draw.text((42, line2_y), stat, font=small_font, fill=(190, 210, 240))
 
-        stat = f"{fmt('CPU', cpu)}  {fmt('MEM', mem)}  {fmt('DISK', disk)}"
-        draw.text((48, y + 8 + name_font.size + 2), stat, font=small_font, fill=(190, 210, 240))
+        temp = metrics.get("temp.pkg")
+        load = metrics.get("cpu.load")
+        latency = metrics.get("net.latency")
+        temp_s = f"{temp:.0f}°C" if isinstance(temp, (int, float)) else "--"
+        load_s = f"{load:.2f}" if isinstance(load, (int, float)) else "--"
+        lat_s = f"{latency:.0f}ms" if isinstance(latency, (int, float)) else "--"
+        line3_y = line2_y + small_font.size + 3
+        extra = f"UP {humanize_uptime(metrics.get('host.uptime'))}  TEMP {temp_s}  LOAD {load_s}  NET {lat_s}"
+        draw.text((42, line3_y), extra, font=small_font, fill=(140, 160, 190))
+
         y += row_h
 
     return img
