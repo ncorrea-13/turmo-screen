@@ -1,25 +1,45 @@
-# TURMO Linux UI modular alpha
+<div align="center">
 
-Simple non-commercial modular Linux sender + PySide6 GUI for TURMO / UsbMonitor / Turing-style 3.5-inch USB serial screens.
+# TURMO Linux
 
-Current default profile based on testing:
+**Modular Linux sender + PySide6 GUI for TURMO / UsbMonitor / Turing-style 3.5" USB serial screens**
 
-- Port: `/dev/ttyACM0`
-- Baud: `4000000`
-- Protocol: `reva`
-- Framebuffer: `320x480`
-- Pixel format: `rgb565le`
+[![CI](https://github.com/ncorrea-13/turmo-linux-ui-modular/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ncorrea-13/turmo-linux-ui-modular/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white)](https://www.python.org)
+[![Podman/Docker](https://img.shields.io/badge/Container-GHCR-2496ED?logo=docker&logoColor=white)](https://github.com/ncorrea-13?tab=packages&repo_name=turmo-linux-ui-modular)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](#license)
 
-## Install
+</div>
+
+---
+
+Sends a system dashboard, static images, test patterns, or a live [Heimdall](https://github.com/kinncj/Heimdall)
+fleet view to a small USB serial screen over the RevA protocol. Non-commercial, personal-use project.
+
+Tested screen profile:
+
+| Port           | Baud      | Protocol | Framebuffer | Pixel format |
+| -------------- | --------- | -------- | ------------ | ------------ |
+| `/dev/ttyACM0` | `4000000` | `reva`   | `320x480`    | `rgb565le`   |
+
+## Stack
+
+| Layer          | Tech                                            |
+| -------------- | ------------------------------------------------ |
+| Language       | Python 3.14                                      |
+| GUI            | PySide6 (desktop only, not in the container image) |
+| Image/pixel    | Pillow                                           |
+| Serial         | pyserial                                         |
+| Fleet metrics  | [Heimdall](https://github.com/kinncj/Heimdall) (`heimdall-cli`, external binary) |
+| Container      | Podman/Docker, `python:3.14-alpine`              |
+
+More: [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+## Quick start
 
 ```bash
-cd ~/Загрузки/turmo-linux-ui-modular
-./install.sh
-```
-
-## Run GUI
-
-```bash
+cd ~/Downloads/turmo-linux-ui-modular
+./install.sh        # creates .venv, installs requirements.txt
 ./run_gui.sh
 ```
 
@@ -37,34 +57,30 @@ sudo usermod -aG uucp "$USER"
 reboot
 ```
 
+`turmo_lite.py`/`turmo_gui.py` are the CLI/GUI entry points; real implementation lives in `turmo/`.
+
+## Homelab fleet dashboard
+
+Instead of this host's own metrics, show a live Heimdall fleet:
+
+```bash
+python turmo_lite.py --fleet --width 480 --height 320 --orientation landscape
+```
+
+Reads `HEIMDALL_HUB` (default `localhost:9090`) and `HEIMDALL_TOKEN` from the environment;
+needs `heimdall-cli` on `$PATH`. See [Development](#development-container) /
+[Production](#production-container) below for the containerized setup.
+
 ## GIF support
 
-GUI:
+GUI: **Open GIF** → choose a `.gif` → set **GIF FPS** (`3–8` recommended) → **Play GIF** → **Stop** to end the loop.
 
-1. Press **Open GIF**.
-2. Choose a `.gif`.
-3. Set **GIF FPS**. Recommended: `3–8 FPS`.
-4. Press **Play GIF**.
-5. Press **Stop** to stop looping.
-
-Full-screen GIFs are slow because 320×480 RGB565 is ~307 KB per frame. Small / low-FPS GIFs work better.
-
-CLI examples:
+Full-screen GIFs are slow: 320×480 RGB565 is ~307 KB/frame. Smaller/lower-FPS GIFs work better.
 
 ```bash
-python turmo_lite.py --gif sample_spinner.gif --gif-loop --gif-fps 8
-```
-
-Play one GIF cycle:
-
-```bash
-python turmo_lite.py --gif sample_spinner.gif --gif-fps 5
-```
-
-Save first prepared GIF frame:
-
-```bash
-python turmo_lite.py --gif sample_spinner.gif --dry-run gif_first.png
+python turmo_lite.py --gif sample_spinner.gif --gif-loop --gif-fps 8   # loop
+python turmo_lite.py --gif sample_spinner.gif --gif-fps 5              # one cycle
+python turmo_lite.py --gif sample_spinner.gif --dry-run gif_first.png  # save first frame, no send
 ```
 
 ## Image examples
@@ -81,13 +97,6 @@ flags for images with a chroma-key background; see `python turmo_lite.py --help`
 ```bash
 python turmo_lite.py --test-pattern --once
 ```
-
-## Notes
-
-- `turmo_lite.py` remains a backward-compatible CLI wrapper.
-- `turmo_gui.py` remains a backward-compatible GUI wrapper.
-- Real implementation lives in the `turmo/` package. See `ARCHITECTURE.md`.
-- GIF playback currently sends full frames for reliability. Partial-window GIF updates can be added later after the RevA protocol is fully stable on the device.
 
 ## Development (container)
 
@@ -127,13 +136,35 @@ Notes:
 
 - Swap the image tag/registry once the pipeline publishes the real one.
 - `HEIMDALL_HUB`/`HEIMDALL_TOKEN` are read by `turmo/metrics.py:fetch_fleet_hosts`; omit `HEIMDALL_TOKEN` if the hub has no token configured.
-- Default entrypoint runs `--fleet --port /dev/ttyACM0` (see `Containerfile`); override `command:` for a different mode.
+- Default entrypoint runs `--fleet --port /dev/ttyACM0 --width 480 --height 320 --orientation landscape` (see `Containerfile`); override `command:` for a different mode.
 - No GUI in this image (`PySide6` dropped, see `requirements-docker.txt`) — headless dashboard only.
+
+## Testing
+
+```bash
+python -m unittest discover tests -v
+```
+
+No hardware needed — serial I/O is mocked. Covers parsing, pixel encoding, RevA coordinate
+packing, and the fleet-fetch/render error paths.
+
+## Project structure
+
+Real implementation lives in `turmo/`, entry points (`turmo_lite.py`/`turmo_gui.py`) are thin
+backward-compatible wrappers. Full layout and send-pipeline notes: [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+## About
+
+Personal, non-commercial project. This codebase's own provenance (before the RevA protocol
+was traced to its real source, and before the Heimdall/container work in this repo) is
+murky — see [`NOTICE.md`](NOTICE.md) for what's actually known.
 
 ## License
 
-GPL-3.0-or-later (see `LICENSE`). The RevA serial protocol in
+GPL-3.0-or-later — see [LICENSE](LICENSE). The RevA serial protocol in
 `turmo/serial_device.py` is reimplemented from
 [turing-smart-screen-python](https://github.com/mathoudebine/turing-smart-screen-python)
-by Matthieu Houdebine (GPL-3.0-or-later); as a combined work, this repo carries
-the same license. See `NOTICE.md` for full provenance.
+by Matthieu Houdebine (GPL-3.0-or-later); as a combined work, this repo carries the same
+license. Full provenance: [`NOTICE.md`](NOTICE.md).
+
+**Nicolás Correa** — [github.com/ncorrea-13](https://github.com/ncorrea-13)
