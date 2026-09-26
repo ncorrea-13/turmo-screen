@@ -7,7 +7,7 @@ import time
 from PIL import Image
 
 from .codecs import encode_pixels, encode_solid_pixels
-from .constants import DEFAULT_BAUD, DEFAULT_PIXEL_FORMAT, MAGIC_1, MAGIC_2, USB2_PACKET_LEN
+from .constants import DEFAULT_BAUD, DEFAULT_HEIGHT, DEFAULT_PIXEL_FORMAT, DEFAULT_WIDTH, MAGIC_1, MAGIC_2, USB2_PACKET_LEN
 
 class TurmoSerial:
     """Small wrapper around pyserial for the TURMO USB2 serial protocol."""
@@ -123,25 +123,32 @@ class TurmoSerial:
         self.ser.reset_input_buffer()
         return data
 
-    def set_orientation_reva(self, width: int, height: int, orientation: int = 0) -> None:
-        """Set screen orientation/window size for RevA. orientation=0 means portrait."""
+    def set_orientation_reva(self, orientation: int = 0) -> None:
+        """Set screen orientation for RevA (0=portrait, 2=landscape, see REVA_ORIENTATIONS).
+
+        The packet always carries the panel's native portrait dimensions
+        (DEFAULT_WIDTH/DEFAULT_HEIGHT) regardless of orientation, matching upstream's
+        LcdCommRevA.SetOrientation: only the orientation byte changes how the device
+        maps the incoming pixel stream. DISPLAY_BITMAP's own window (sent separately,
+        per frame) uses the actual rendered image size.
+        """
         packet = bytearray(16)
         # x/y/ex/ey all zero, command at byte 5
         packet[5] = self.CMD_REVA_SET_ORIENTATION & 0xFF
         packet[6] = (int(orientation) + 100) & 0xFF
-        packet[7] = (int(width) >> 8) & 0xFF
-        packet[8] = int(width) & 0xFF
-        packet[9] = (int(height) >> 8) & 0xFF
-        packet[10] = int(height) & 0xFF
+        packet[7] = (DEFAULT_WIDTH >> 8) & 0xFF
+        packet[8] = DEFAULT_WIDTH & 0xFF
+        packet[9] = (DEFAULT_HEIGHT >> 8) & 0xFF
+        packet[10] = DEFAULT_HEIGHT & 0xFF
         self.ser.write(bytes(packet))
         self.ser.flush()
         time.sleep(0.02)
 
-    def clear_reva(self, width: int, height: int) -> None:
+    def clear_reva(self, orientation: int = 0) -> None:
         # The upstream implementation notes that orientation should be portrait before clear.
-        self.set_orientation_reva(width, height, orientation=0)
+        self.set_orientation_reva(0)
         self.send_reva_command(self.CMD_REVA_CLEAR, 0, 0, 0, 0, sleep=0.08)
-        self.set_orientation_reva(width, height, orientation=0)
+        self.set_orientation_reva(orientation)
 
     def set_brightness_reva(self, value: int) -> None:
         value = max(0, min(100, int(value)))
@@ -157,6 +164,7 @@ class TurmoSerial:
         x_byte: int = 0,
         chunk_lines: int = 4,
         set_orientation: bool = True,
+        orientation: int = 0,
     ) -> bool:
         """Send a full frame with the real RevA DISPLAY_BITMAP window command.
 
@@ -166,7 +174,7 @@ class TurmoSerial:
         """
         width, height = img.size
         if set_orientation:
-            self.set_orientation_reva(width, height, orientation=0)
+            self.set_orientation_reva(orientation)
 
         raw = encode_pixels(img, pixel_format=pixel_format, x_byte=x_byte)
         self.send_reva_command(self.CMD_REVA_DISPLAY_BITMAP, 0, 0, width - 1, height - 1, sleep=0.005)

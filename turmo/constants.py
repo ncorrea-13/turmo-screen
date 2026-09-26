@@ -15,3 +15,11 @@ PIXEL_FORMATS = [
 ]
 
 RGB565_FORMATS = {"rgb565le", "bgr565le", "rgb565be", "bgr565be"}
+
+# RevA orientation byte values (see LcdCommRevA.Orientation upstream).
+REVA_ORIENTATIONS = {
+    "portrait": 0,
+    "reverse-portrait": 1,
+    "landscape": 2,
+    "reverse-landscape": 3,
+}

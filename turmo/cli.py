@@ -11,7 +11,7 @@ from PIL import Image
 
 from .codecs import encode_pixels
 from .config import parse_bg
-from .constants import DEFAULT_BAUD, DEFAULT_HEIGHT, DEFAULT_PIXEL_FORMAT, DEFAULT_WIDTH, PIXEL_FORMATS, RGB565_FORMATS
+from .constants import DEFAULT_BAUD, DEFAULT_HEIGHT, DEFAULT_PIXEL_FORMAT, DEFAULT_WIDTH, PIXEL_FORMATS, REVA_ORIENTATIONS, RGB565_FORMATS
 from .frame import make_frame
 from .gif import prepare_gif_frames
 from .ports import print_ports
@@ -24,6 +24,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     parser.add_argument("--baud", type=int, default=DEFAULT_BAUD, help="baud rate; 4000000 worked in testing, RevA often also ignores/accepts 115200")
     parser.add_argument("--protocol", choices=["reva", "legacy"], default="reva", help="reva sends real DISPLAY_BITMAP window command; legacy uses old raw 0x13/0x17 mode")
     parser.add_argument("--reva-no-orientation", action="store_true", help="do not send SET_ORIENTATION before each RevA frame")
+    parser.add_argument("--orientation", choices=list(REVA_ORIENTATIONS), default="portrait", help="RevA screen orientation; pair --orientation landscape with --width 480 --height 320")
     parser.add_argument("--reva-chunk-lines", type=int, default=4, help="RevA image data chunk size in screen lines, default 4")
     parser.add_argument("--hello", action="store_true", help="send RevA HELLO and print 6-byte response, if any")
     parser.add_argument("--width", type=int, default=DEFAULT_WIDTH)
@@ -127,9 +128,11 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
             else:
                 dev.set_brightness(args.brightness)
 
+        orientation_value = REVA_ORIENTATIONS[args.orientation]
+
         if args.clear:
             if args.protocol == "reva":
-                dev.clear_reva(args.width, args.height)
+                dev.clear_reva(orientation_value)
             else:
                 black = Image.new("RGB", img.size, (0, 0, 0))
                 dev.send_image(black, pixel_format=args.pixel_format, x_byte=args.x_byte, strict_ack=False, reset_before_frame=args.reset_before_frame, raw_prefix_pixels=0, raw_tail_pixels=args.raw_tail_pixels, pad_color=args.bg)
@@ -145,6 +148,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
                     x_byte=args.x_byte,
                     chunk_lines=args.reva_chunk_lines,
                     set_orientation=not args.reva_no_orientation,
+                    orientation=orientation_value,
                 )
             else:
                 ack = dev.send_image(
