@@ -19,4 +19,4 @@ COPY turmo/ turmo/
 COPY turmo_lite.py .
 
 ENTRYPOINT ["python", "turmo_lite.py"]
-CMD ["--fleet", "--port", "/dev/ttyACM0", "--interval", "1", "--clear"]
+CMD ["--fleet", "--port", "/dev/ttyACM0", "--width", "480", "--height", "320", "--orientation", "landscape", "--interval", "1", "--clear"]
