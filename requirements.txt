@@ -1,0 +1,4 @@
+psutil
+pillow
+pyserial
+PySide6
