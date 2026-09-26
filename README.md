@@ -85,3 +85,32 @@ python turmo_lite.py --test-pattern --once
 - `turmo_gui.py` remains a backward-compatible GUI wrapper.
 - Real implementation lives in the `turmo/` package. See `ARCHITECTURE.md`.
 - GIF playback currently sends full frames for reliability. Partial-window GIF updates can be added later after the RevA protocol is fully stable on the device.
+
+## Production (container)
+
+CI builds and pushes the image on every push to `main` (see `.github/workflows/ci.yml`),
+tagged `latest`, `<branch>`, and `<sha>` at `ghcr.io/<owner>/<repo>`.
+
+`compose.yaml`:
+
+```yaml
+services:
+  turmo:
+    image: ghcr.io/ncorrea-13/turmo-linux-ui-modular:latest
+    container_name: turmo
+    restart: unless-stopped
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0
+    environment:
+      - HEIMDALL_HUB=heimdall-hub:9090
+      - HEIMDALL_TOKEN=${HEIMDALL_TOKEN}
+    logging:
+      driver: journald
+```
+
+Notes:
+
+- Swap the image tag/registry once the pipeline publishes the real one.
+- `HEIMDALL_HUB`/`HEIMDALL_TOKEN` are read by `turmo/metrics.py:fetch_fleet_hosts`; omit `HEIMDALL_TOKEN` if the hub has no token configured.
+- Default entrypoint runs `--fleet --port /dev/ttyACM0` (see `Containerfile`); override `command:` for a different mode.
+- No GUI in this image (`PySide6` dropped, see `requirements-docker.txt`) — headless dashboard only.
