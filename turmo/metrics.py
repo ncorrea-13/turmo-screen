@@ -75,7 +75,7 @@ def collect_metrics() -> Metrics:
 
     return Metrics(cpu, ram, disk, cpu_temp, gpu, gpu_temp, up, down)
 
-def fetch_fleet_hosts(hub: Optional[str] = None, token: Optional[str] = None, wait: str = "800ms") -> list[dict]:
+def fetch_fleet_hosts(hub: Optional[str] = None, token: Optional[str] = None, wait: str = "400ms") -> list[dict]:
     """Read-only snapshot of a Heimdall fleet via heimdall-cli. Empty list on any failure."""
     hub = hub or os.environ.get("HEIMDALL_HUB", "localhost:9090")
     token = token if token is not None else os.environ.get("HEIMDALL_TOKEN")
