@@ -35,3 +35,15 @@ the confirmed GPL derivation above, this part is GPL-3.0-or-later too now
   fleet hardware monitor (hub/daemon/CLI), licensed **AGPL-3.0**. Used here as
   an external binary (`heimdall-cli`) queried over gRPC/JSON, not modified or
   linked into this codebase. See `turmo/metrics.py:fetch_fleet_hosts`.
+
+  **Why this doesn't extend AGPL to this repo** (unlike the RevA case above):
+  we download the official, unmodified `heimdall-cli` binary from upstream's
+  GitHub releases and invoke it as a subprocess, parsing its JSON stdout —
+  the same arm's-length relationship this repo already has with `nvidia-smi`.
+  No Heimdall source is copied, modified, or linked into this codebase, and we
+  don't distribute Heimdall ourselves. AGPL's copyleft (including its §13
+  network clause) attaches to copying/modifying/conveying the AGPL program
+  itself, not to an unrelated program that merely shells out to it over a
+  documented CLI. Compare to RevA: there we copied the actual protocol
+  logic/constants into our own source — that's what makes it a derivative
+  work and pulls the whole repo under GPL-3.0-or-later.
