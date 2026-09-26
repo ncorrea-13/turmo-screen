@@ -15,8 +15,8 @@
 
 ---
 
-Sends a system dashboard, static images, test patterns, or a live [Heimdall](https://github.com/kinncj/Heimdall)
-fleet view to a small USB serial screen over the RevA protocol. Non-commercial, personal-use project.
+Sends a system dashboard, static images, test patterns, or a live view of your other
+homelab machines (via [Heimdall](https://github.com/kinncj/Heimdall)) to a small USB serial screen over the RevA protocol. Non-commercial, personal-use project.
 
 Tested screen profile:
 
@@ -32,7 +32,7 @@ Tested screen profile:
 | GUI            | PySide6 (desktop only, not in the container image) |
 | Image/pixel    | Pillow                                           |
 | Serial         | pyserial                                         |
-| Fleet metrics  | [Heimdall](https://github.com/kinncj/Heimdall) (`heimdall-cli`, external binary) |
+| Remote metrics | [Heimdall](https://github.com/kinncj/Heimdall) (`heimdall-cli`, external binary) |
 | Container      | Podman/Docker, `python:3.14-alpine`              |
 
 More: [`ARCHITECTURE.md`](ARCHITECTURE.md).
@@ -40,7 +40,8 @@ More: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 ## Quick start
 
 ```bash
-cd ~/Downloads/turmo-screen
+git clone https://github.com/ncorrea-13/turmo-screen.git
+cd turmo-screen
 ./install.sh        # creates .venv, installs requirements.txt
 ./run_gui.sh
 ```
@@ -61,9 +62,9 @@ reboot
 
 `turmo_lite.py`/`turmo_gui.py` are the CLI/GUI entry points; real implementation lives in `turmo/`.
 
-## Homelab fleet dashboard
+## Homelab dashboard (other machines)
 
-Instead of this host's own metrics, show a live Heimdall fleet:
+Instead of this host's own metrics, show live stats from every machine in your homelab:
 
 ```bash
 python turmo_lite.py --fleet --width 480 --height 320 --orientation landscape
@@ -103,7 +104,7 @@ python turmo_lite.py --test-pattern --once
 ## Development (container)
 
 `compose.dev.yaml` builds `heimdall-hub` + `heimdall-daemon` (self-monitoring the dev
-container, just to have a fleet to look at) + `turmo` from local sources — no image
+container, just to have something to display) + `turmo` from local sources — no image
 registry needed:
 
 ```bash
@@ -148,7 +149,7 @@ python -m unittest discover tests -v
 ```
 
 No hardware needed — serial I/O is mocked. Covers parsing, pixel encoding, RevA coordinate
-packing, and the fleet-fetch/render error paths.
+packing, and the Heimdall fetch/render error paths.
 
 ## Project structure
 

@@ -15,8 +15,8 @@
 
 ---
 
-Manda un dashboard del sistema, imágenes estáticas, patrones de prueba, o una vista en vivo de una
-flota [Heimdall](https://github.com/kinncj/Heimdall) a una pantalla serial USB chica por el protocolo
+Manda un dashboard del sistema, imágenes estáticas, patrones de prueba, o una vista en vivo del resto
+de tus máquinas del homelab (vía [Heimdall](https://github.com/kinncj/Heimdall)) a una pantalla serial USB chica por el protocolo
 RevA. Proyecto personal, no comercial.
 
 Perfil de pantalla probado:
@@ -33,7 +33,7 @@ Perfil de pantalla probado:
 | GUI               | PySide6 (solo escritorio, no va en la imagen de container) |
 | Imagen/píxeles    | Pillow                                           |
 | Serial            | pyserial                                         |
-| Métricas de flota | [Heimdall](https://github.com/kinncj/Heimdall) (`heimdall-cli`, binario externo) |
+| Métricas remotas  | [Heimdall](https://github.com/kinncj/Heimdall) (`heimdall-cli`, binario externo) |
 | Container         | Podman/Docker, `python:3.14-alpine`              |
 
 Más: [`ARCHITECTURE.md`](ARCHITECTURE.md).
@@ -41,7 +41,8 @@ Más: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 ## Inicio rápido
 
 ```bash
-cd ~/Downloads/turmo-screen
+git clone https://github.com/ncorrea-13/turmo-screen.git
+cd turmo-screen
 ./install.sh        # crea .venv, instala requirements.txt
 ./run_gui.sh
 ```
@@ -62,9 +63,9 @@ reboot
 
 `turmo_lite.py`/`turmo_gui.py` son los entry points de CLI/GUI; la implementación real vive en `turmo/`.
 
-## Dashboard de flota homelab
+## Dashboard del homelab (otras máquinas)
 
-En vez de las métricas de este host, muestra una flota Heimdall en vivo:
+En vez de las métricas de este host, mostrá el estado en vivo de cada máquina de tu homelab:
 
 ```bash
 python turmo_lite.py --fleet --width 480 --height 320 --orientation landscape
@@ -104,7 +105,7 @@ python turmo_lite.py --test-pattern --once
 ## Desarrollo (container)
 
 `compose.dev.yaml` buildea `heimdall-hub` + `heimdall-daemon` (auto-monitoreándose el propio
-container, solo para tener una flota que mirar) + `turmo` desde el código local — sin necesidad
+container, solo para tener algo que mostrar) + `turmo` desde el código local — sin necesidad
 de registry:
 
 ```bash
@@ -149,7 +150,7 @@ python -m unittest discover tests -v
 ```
 
 No necesita hardware — el I/O serial está mockeado. Cubre parsing, encoding de píxeles, el
-empaquetado de coordenadas RevA, y los casos de error de fetch/render de la flota.
+empaquetado de coordenadas RevA, y los casos de error de fetch/render de Heimdall.
 
 ## Estructura del proyecto
 
