@@ -80,10 +80,9 @@ def fetch_fleet_hosts(hub: Optional[str] = None, token: Optional[str] = None, wa
     hub = hub or os.environ.get("HEIMDALL_HUB", "localhost:9090")
     token = token if token is not None else os.environ.get("HEIMDALL_TOKEN")
     cmd = ["heimdall-cli", "--hub", hub, "--wait", wait, "hosts"]
-    if token:
-        cmd += ["--token", token]
+    env = {**os.environ, "HEIMDALL_TOKEN": token} if token else None
     try:
-        result = subprocess.run(cmd, check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=3.0)
+        result = subprocess.run(cmd, env=env, check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=3.0)
     except Exception:
         return []
     try:
