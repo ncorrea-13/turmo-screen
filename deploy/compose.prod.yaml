@@ -1,0 +1,12 @@
+services:
+  turmo:
+    image: ghcr.io/ncorrea-13/turmo-screen:latest
+    container_name: turmo
+    restart: unless-stopped
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0
+    environment:
+      - HEIMDALL_HUB=heimdall-hub:9090
+      - HEIMDALL_TOKEN=${HEIMDALL_TOKEN}
+    logging:
+      driver: journald
