@@ -6,7 +6,7 @@ services:
     devices:
       - /dev/ttyACM0:/dev/ttyACM0
     environment:
-      - HEIMDALL_HUB=heimdall-hub:9090
+      - HEIMDALL_HUB=${HEIMDALL_HUB}
       - HEIMDALL_TOKEN=${HEIMDALL_TOKEN}
     logging:
       driver: journald

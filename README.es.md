@@ -158,7 +158,26 @@ CI buildea y pushea la imagen `turmo` en cada push a `main` (ver `.github/workfl
 taggeada `latest`, `<branch>` y `<sha>` en `ghcr.io/<owner>/<repo>`. `heimdall-hub` no lo buildea
 CI — asume que ya hay un hub Heimdall real corriendo en la red.
 
-`deploy/compose.prod.yaml`:
+### Servidor hub de Heimdall (una vez, donde reporte la fleet)
+
+Es un binario estático único — no necesita container. Levantalo una vez, en el host que actúe
+como punto central de la fleet:
+
+```bash
+curl -fsSL https://github.com/kinncj/Heimdall/releases/download/v2.7.4/heimdall-hub_linux_amd64 -o /usr/local/bin/heimdall-hub
+chmod +x /usr/local/bin/heimdall-hub
+/usr/local/bin/heimdall-hub --listen :9090
+```
+
+Usá `heimdall-hub_linux_arm64` en hosts arm64. Corré bajo una unit de systemd (o cualquier
+supervisor de procesos) para que sobreviva reboots. Ver el
+[proyecto Heimdall](https://github.com/kinncj/Heimdall) para configuración del hub (token,
+storage, etc). `deploy/heimdall-hub.Containerfile` sigue existiendo por si específicamente
+lo querés containerizado (eso es lo que usa `deploy/compose.dev.yaml`).
+
+### Cada cliente (uno por pantalla)
+
+`deploy/compose.prod.yaml` corre un solo cliente `turmo`, apuntado a ese hub:
 
 ```yaml
 services:
@@ -169,15 +188,18 @@ services:
     devices:
       - /dev/ttyACM0:/dev/ttyACM0
     environment:
-      - HEIMDALL_HUB=heimdall-hub:9090
+      - HEIMDALL_HUB=${HEIMDALL_HUB}
       - HEIMDALL_TOKEN=${HEIMDALL_TOKEN}
     logging:
       driver: journald
 ```
 
 ```bash
-podman-compose -f deploy/compose.prod.yaml up -d
+HEIMDALL_HUB=<host-del-hub>:9090 HEIMDALL_TOKEN=<token> podman-compose -f deploy/compose.prod.yaml up -d
 ```
+
+Desplegá este mismo compose en cada host con una pantalla conectada — un container `turmo` por
+pantalla, todos apuntando al mismo `HEIMDALL_HUB`.
 
 Notas:
 
