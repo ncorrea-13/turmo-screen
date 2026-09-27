@@ -15,8 +15,8 @@
 
 ---
 
-Manda un dashboard del sistema, imágenes estáticas, patrones de prueba, o una vista en vivo de una
-flota [Heimdall](https://github.com/kinncj/Heimdall) a una pantalla serial USB chica por el protocolo
+Manda un dashboard del sistema, imágenes estáticas, patrones de prueba, o una vista en vivo del resto
+de tus máquinas del homelab (vía [Heimdall](https://github.com/kinncj/Heimdall)) a una pantalla serial USB chica por el protocolo
 RevA. Proyecto personal, no comercial.
 
 Perfil de pantalla probado:
@@ -33,7 +33,7 @@ Perfil de pantalla probado:
 | GUI               | PySide6 (solo escritorio, no va en la imagen de container) |
 | Imagen/píxeles    | Pillow                                           |
 | Serial            | pyserial                                         |
-| Métricas de flota | [Heimdall](https://github.com/kinncj/Heimdall) (`heimdall-cli`, binario externo) |
+| Métricas remotas  | [Heimdall](https://github.com/kinncj/Heimdall) (`heimdall-cli`, binario externo) |
 | Container         | Podman/Docker, `python:3.14-alpine`              |
 
 Más: [`ARCHITECTURE.md`](ARCHITECTURE.md).
@@ -41,9 +41,10 @@ Más: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 ## Inicio rápido
 
 ```bash
-cd ~/Downloads/turmo-screen
-./install.sh        # crea .venv, instala requirements.txt
-./run_gui.sh
+git clone https://github.com/ncorrea-13/turmo-screen.git
+cd turmo-screen
+./scripts/install.sh        # crea .venv, instala requirements.txt
+./scripts/run_gui.sh
 ```
 
 Si la pantalla da error de permisos:
@@ -62,9 +63,9 @@ reboot
 
 `turmo_lite.py`/`turmo_gui.py` son los entry points de CLI/GUI; la implementación real vive en `turmo/`.
 
-## Dashboard de flota homelab
+## Dashboard del homelab (otras máquinas)
 
-En vez de las métricas de este host, muestra una flota Heimdall en vivo:
+En vez de las métricas de este host, mostrá el estado en vivo de cada máquina de tu homelab:
 
 ```bash
 python turmo_lite.py --fleet --width 480 --height 320 --orientation landscape
@@ -74,6 +75,44 @@ Lee `HEIMDALL_HUB` (default `localhost:9090`) y `HEIMDALL_TOKEN` del entorno; ne
 `heimdall-cli` en el `$PATH`. Ver [Desarrollo](#desarrollo-container) /
 [Producción](#producción-container) más abajo para el setup en container.
 
+### Setup del daemon en cada máquina
+
+En cada máquina que quieras que turmo muestre, corré `heimdall-daemon` apuntando al hub.
+Mantené el token fuera de la línea de comando (mismo motivo que el fix de `fetch_fleet_hosts`)
+— usá un archivo de entorno, no `--token`:
+
+```bash
+mkdir -p ~/.config/heimdall
+printf 'HEIMDALL_TOKEN=<mismo-token-que-el-hub>\n' > ~/.config/heimdall/daemon.env
+chmod 600 ~/.config/heimdall/daemon.env
+
+curl -fsSL https://github.com/kinncj/Heimdall/releases/download/v2.7.4/heimdall-daemon_linux_<arch> -o ~/.local/bin/heimdall-daemon
+chmod +x ~/.local/bin/heimdall-daemon
+```
+
+`~/.config/systemd/user/heimdall-daemon.service`:
+
+```ini
+[Unit]
+Description=Heimdall daemon
+
+[Service]
+EnvironmentFile=%h/.config/heimdall/daemon.env
+ExecStart=%h/.local/bin/heimdall-daemon --hub <host-del-hub>:9090 --name %H
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+```
+
+```bash
+systemctl --user enable --now heimdall-daemon.service
+loginctl enable-linger "$USER"   # arranca al boot sin sesión activa
+```
+
+TLS (`--tls`/`--tls-ca`) es opcional acá si el hub solo es alcanzable por Tailscale — la mesh
+ya encripta el transporte. Agregalo si el hub queda expuesto en una red menos confiable.
+
 ## Soporte de GIF
 
 GUI: **Open GIF** → elegí un `.gif` → seteá **GIF FPS** (recomendado `3–8`) → **Play GIF** → **Stop** para cortar el loop.
@@ -81,9 +120,9 @@ GUI: **Open GIF** → elegí un `.gif` → seteá **GIF FPS** (recomendado `3–
 Los GIF a pantalla completa son lentos: 320×480 RGB565 pesa ~307 KB por frame. GIFs más chicos o con menos FPS andan mejor.
 
 ```bash
-python turmo_lite.py --gif sample_spinner.gif --gif-loop --gif-fps 8   # loop
-python turmo_lite.py --gif sample_spinner.gif --gif-fps 5              # un ciclo
-python turmo_lite.py --gif sample_spinner.gif --dry-run gif_first.png  # guarda el primer frame, no envía
+python turmo_lite.py --gif assets/sample_spinner.gif --gif-loop --gif-fps 8   # loop
+python turmo_lite.py --gif assets/sample_spinner.gif --gif-fps 5              # un ciclo
+python turmo_lite.py --gif assets/sample_spinner.gif --dry-run gif_first.png  # guarda el primer frame, no envía
 ```
 
 ## Ejemplos de imagen
@@ -103,22 +142,42 @@ python turmo_lite.py --test-pattern --once
 
 ## Desarrollo (container)
 
-`compose.dev.yaml` buildea `heimdall-hub` + `heimdall-daemon` (auto-monitoreándose el propio
-container, solo para tener una flota que mirar) + `turmo` desde el código local — sin necesidad
+`deploy/compose.dev.yaml` buildea `heimdall-hub` + `heimdall-daemon` (auto-monitoreándose el propio
+container, solo para tener algo que mostrar) + `turmo` desde el código local — sin necesidad
 de registry:
 
 ```bash
-podman-compose -f compose.dev.yaml up --build
+podman-compose -f deploy/compose.dev.yaml up --build
 ```
 
 Rebuildear después de cambios de código con `--build` de nuevo. Necesita `/dev/ttyACM0` presente en el host.
 
 ## Producción (container)
 
-CI buildea y pushea la imagen en cada push a `main` (ver `.github/workflows/ci.yml`),
-taggeada `latest`, `<branch>` y `<sha>` en `ghcr.io/<owner>/<repo>`.
+CI buildea y pushea la imagen `turmo` en cada push a `main` (ver `.github/workflows/ci.yml`),
+taggeada `latest`, `<branch>` y `<sha>` en `ghcr.io/<owner>/<repo>`. `heimdall-hub` no lo buildea
+CI — asume que ya hay un hub Heimdall real corriendo en la red.
 
-`compose.yaml`:
+### Servidor hub de Heimdall (una vez, donde reporte la fleet)
+
+Es un binario estático único — no necesita container. Levantalo una vez, en el host que actúe
+como punto central de la fleet:
+
+```bash
+curl -fsSL https://github.com/kinncj/Heimdall/releases/download/v2.7.4/heimdall-hub_linux_amd64 -o /usr/local/bin/heimdall-hub
+chmod +x /usr/local/bin/heimdall-hub
+/usr/local/bin/heimdall-hub --listen :9090
+```
+
+Usá `heimdall-hub_linux_arm64` en hosts arm64. Corré bajo una unit de systemd (o cualquier
+supervisor de procesos) para que sobreviva reboots. Ver el
+[proyecto Heimdall](https://github.com/kinncj/Heimdall) para configuración del hub (token,
+storage, etc). `deploy/heimdall-hub.Containerfile` sigue existiendo por si específicamente
+lo querés containerizado (eso es lo que usa `deploy/compose.dev.yaml`).
+
+### Cada cliente (uno por pantalla)
+
+`deploy/compose.prod.yaml` corre un solo cliente `turmo`, apuntado a ese hub:
 
 ```yaml
 services:
@@ -129,17 +188,24 @@ services:
     devices:
       - /dev/ttyACM0:/dev/ttyACM0
     environment:
-      - HEIMDALL_HUB=heimdall-hub:9090
+      - HEIMDALL_HUB=${HEIMDALL_HUB}
       - HEIMDALL_TOKEN=${HEIMDALL_TOKEN}
     logging:
       driver: journald
 ```
 
+```bash
+HEIMDALL_HUB=<host-del-hub>:9090 HEIMDALL_TOKEN=<token> podman-compose -f deploy/compose.prod.yaml up -d
+```
+
+Desplegá este mismo compose en cada host con una pantalla conectada — un container `turmo` por
+pantalla, todos apuntando al mismo `HEIMDALL_HUB`.
+
 Notas:
 
 - Cambiá el tag/registry de imagen una vez que el pipeline publique el real.
 - `HEIMDALL_HUB`/`HEIMDALL_TOKEN` los lee `turmo/metrics.py:fetch_fleet_hosts`; omití `HEIMDALL_TOKEN` si el hub no tiene token configurado.
-- El entrypoint por defecto corre `--fleet --port /dev/ttyACM0 --width 480 --height 320 --orientation landscape` (ver `Containerfile`); sobreescribí `command:` para otro modo.
+- El entrypoint por defecto corre `--fleet --port /dev/ttyACM0 --width 480 --height 320 --orientation landscape` (ver `deploy/Containerfile`); sobreescribí `command:` para otro modo.
 - Sin GUI en esta imagen (`PySide6` sacado, ver `requirements-docker.txt`) — solo dashboard headless.
 
 ## Testing
@@ -149,13 +215,14 @@ python -m unittest discover tests -v
 ```
 
 No necesita hardware — el I/O serial está mockeado. Cubre parsing, encoding de píxeles, el
-empaquetado de coordenadas RevA, y los casos de error de fetch/render de la flota.
+empaquetado de coordenadas RevA, y los casos de error de fetch/render de Heimdall.
 
 ## Estructura del proyecto
 
 La implementación real vive en `turmo/`, los entry points (`turmo_lite.py`/`turmo_gui.py`) son
-wrappers finos, compatibles hacia atrás. Layout completo y notas del pipeline de envío:
-[`ARCHITECTURE.md`](ARCHITECTURE.md).
+wrappers finos, compatibles hacia atrás. `scripts/` tiene los helpers de instalación/ejecución/
+prueba de hardware, `deploy/` tiene los Containerfiles y compose files, `assets/` tiene media de
+ejemplo. Layout completo y notas del pipeline de envío: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## Sobre el proyecto
 

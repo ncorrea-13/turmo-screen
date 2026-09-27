@@ -87,6 +87,14 @@ class FetchFleetHostsTests(unittest.TestCase):
             hosts = fetch_fleet_hosts(hub="x:9090")
         self.assertEqual(hosts, [{"id": "a", "state": "online"}])
 
+    def test_token_passed_via_env_not_argv(self):
+        fake = MagicMock(stdout="[]")
+        with patch("subprocess.run", return_value=fake) as mock_run:
+            fetch_fleet_hosts(hub="x:9090", token="s3cr3t")
+        args, kwargs = mock_run.call_args
+        self.assertNotIn("s3cr3t", args[0])
+        self.assertEqual(kwargs["env"]["HEIMDALL_TOKEN"], "s3cr3t")
+
     def test_rejects_non_list_json(self):
         fake = MagicMock(stdout=json.dumps({"not": "a list"}))
         with patch("subprocess.run", return_value=fake):

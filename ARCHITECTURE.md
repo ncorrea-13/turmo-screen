@@ -37,7 +37,7 @@ Existing commands are preserved:
 ```bash
 python turmo_lite.py --help
 python turmo_lite.py --test-pattern --dry-run preview.png
-./run_gui.sh
+./scripts/run_gui.sh
 ```
 
 Old GUI code that expected `turmo_lite.py` functions can still work through
