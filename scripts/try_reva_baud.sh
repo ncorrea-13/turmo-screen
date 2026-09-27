@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 source .venv/bin/activate 2>/dev/null || true
 for B in 115200 921600 2000000 4000000; do
   echo "=== baud $B ==="
