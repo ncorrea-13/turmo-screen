@@ -1,14 +1,14 @@
 services:
   heimdall-hub:
     build:
-      context: .
-      dockerfile: heimdall-hub.Containerfile
+      context: ..
+      dockerfile: deploy/heimdall-hub.Containerfile
     container_name: turmo-dev-heimdall-hub
 
   heimdall-daemon:
     build:
-      context: .
-      dockerfile: heimdall-hub.Containerfile
+      context: ..
+      dockerfile: deploy/heimdall-hub.Containerfile
     container_name: turmo-dev-heimdall-daemon
     entrypoint: ["heimdall-daemon"]
     command: ["--hub", "heimdall-hub:9090", "--name", "dev-container"]
@@ -17,8 +17,8 @@ services:
 
   turmo:
     build:
-      context: .
-      dockerfile: Containerfile
+      context: ..
+      dockerfile: deploy/Containerfile
     container_name: turmo-dev
     devices:
       - /dev/ttyACM0:/dev/ttyACM0
