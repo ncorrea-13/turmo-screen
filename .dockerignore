@@ -9,11 +9,12 @@ tests/
 LICENSE
 NOTICE.md
 
-compose.dev.yaml
-heimdall-hub.Containerfile
+deploy/compose.dev.yaml
+deploy/compose.prod.yaml
+deploy/heimdall-hub.Containerfile
 
-sample_spinner.gif
-gif_first.png
+assets/sample_spinner.gif
+assets/gif_first.png
 preview.png
 
 .DS_Store

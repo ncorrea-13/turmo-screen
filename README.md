@@ -42,8 +42,8 @@ More: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 ```bash
 git clone https://github.com/ncorrea-13/turmo-screen.git
 cd turmo-screen
-./install.sh        # creates .venv, installs requirements.txt
-./run_gui.sh
+./scripts/install.sh        # creates .venv, installs requirements.txt
+./scripts/run_gui.sh
 ```
 
 If the screen gives a permission error:
@@ -119,9 +119,9 @@ GUI: **Open GIF** → choose a `.gif` → set **GIF FPS** (`3–8` recommended) 
 Full-screen GIFs are slow: 320×480 RGB565 is ~307 KB/frame. Smaller/lower-FPS GIFs work better.
 
 ```bash
-python turmo_lite.py --gif sample_spinner.gif --gif-loop --gif-fps 8   # loop
-python turmo_lite.py --gif sample_spinner.gif --gif-fps 5              # one cycle
-python turmo_lite.py --gif sample_spinner.gif --dry-run gif_first.png  # save first frame, no send
+python turmo_lite.py --gif assets/sample_spinner.gif --gif-loop --gif-fps 8   # loop
+python turmo_lite.py --gif assets/sample_spinner.gif --gif-fps 5              # one cycle
+python turmo_lite.py --gif assets/sample_spinner.gif --dry-run gif_first.png  # save first frame, no send
 ```
 
 ## Image examples
@@ -141,22 +141,23 @@ python turmo_lite.py --test-pattern --once
 
 ## Development (container)
 
-`compose.dev.yaml` builds `heimdall-hub` + `heimdall-daemon` (self-monitoring the dev
+`deploy/compose.dev.yaml` builds `heimdall-hub` + `heimdall-daemon` (self-monitoring the dev
 container, just to have something to display) + `turmo` from local sources — no image
 registry needed:
 
 ```bash
-podman-compose -f compose.dev.yaml up --build
+podman-compose -f deploy/compose.dev.yaml up --build
 ```
 
 Rebuild after code changes with `--build` again. Needs `/dev/ttyACM0` present on the host.
 
 ## Production (container)
 
-CI builds and pushes the image on every push to `main` (see `.github/workflows/ci.yml`),
-tagged `latest`, `<branch>`, and `<sha>` at `ghcr.io/<owner>/<repo>`.
+CI builds and pushes the `turmo` image on every push to `main` (see `.github/workflows/ci.yml`),
+tagged `latest`, `<branch>`, and `<sha>` at `ghcr.io/<owner>/<repo>`. `heimdall-hub` is not built
+by CI — it assumes a real Heimdall hub is already running on the network.
 
-`compose.yaml`:
+`deploy/compose.prod.yaml`:
 
 ```yaml
 services:
@@ -173,11 +174,15 @@ services:
       driver: journald
 ```
 
+```bash
+podman-compose -f deploy/compose.prod.yaml up -d
+```
+
 Notes:
 
 - Swap the image tag/registry once the pipeline publishes the real one.
 - `HEIMDALL_HUB`/`HEIMDALL_TOKEN` are read by `turmo/metrics.py:fetch_fleet_hosts`; omit `HEIMDALL_TOKEN` if the hub has no token configured.
-- Default entrypoint runs `--fleet --port /dev/ttyACM0 --width 480 --height 320 --orientation landscape` (see `Containerfile`); override `command:` for a different mode.
+- Default entrypoint runs `--fleet --port /dev/ttyACM0 --width 480 --height 320 --orientation landscape` (see `deploy/Containerfile`); override `command:` for a different mode.
 - No GUI in this image (`PySide6` dropped, see `requirements-docker.txt`) — headless dashboard only.
 
 ## Testing
@@ -192,7 +197,9 @@ packing, and the Heimdall fetch/render error paths.
 ## Project structure
 
 Real implementation lives in `turmo/`, entry points (`turmo_lite.py`/`turmo_gui.py`) are thin
-backward-compatible wrappers. Full layout and send-pipeline notes: [`ARCHITECTURE.md`](ARCHITECTURE.md).
+backward-compatible wrappers. `scripts/` holds the install/run/test-hardware helpers, `deploy/`
+holds the Containerfiles and compose files, `assets/` holds sample media. Full layout and
+send-pipeline notes: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## About
 
