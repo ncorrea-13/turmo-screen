@@ -90,3 +90,22 @@ def fetch_fleet_hosts(hub: Optional[str] = None, token: Optional[str] = None, wa
     except Exception:
         return []
     return hosts if isinstance(hosts, list) else []
+
+def remember_hosts(hosts: list[dict]) -> list[dict]:
+    """Persist every host id ever seen; ids missing from `hosts` come back as offline placeholders."""
+    path = os.environ.get("TURMO_FLEET_CACHE") or os.path.join(os.path.expanduser("~"), ".cache", "turmo", "fleet.json")
+    try:
+        with open(path) as f:
+            known = set(json.load(f))
+    except Exception:
+        known = set()
+    seen = {h["id"] for h in hosts if "id" in h}
+    if not seen <= known:
+        known |= seen
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w") as f:
+                json.dump(sorted(known), f)
+        except OSError:
+            pass  # cache is best-effort; fleet still renders
+    return hosts + [{"id": i, "state": "offline", "metrics": {}} for i in sorted(known - seen)]
