@@ -8,5 +8,11 @@ services:
     environment:
       - HEIMDALL_HUB=${HEIMDALL_HUB}
       - HEIMDALL_TOKEN=${HEIMDALL_TOKEN}
+      - TURMO_FLEET_CACHE=/data/fleet.json
+    volumes:
+      - turmo-data:/data
     logging:
       driver: journald
+
+volumes:
+  turmo-data:

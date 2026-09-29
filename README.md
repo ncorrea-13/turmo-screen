@@ -1,8 +1,8 @@
 <div align="center">
 
-# TURMO Linux
+# turmo-screen
 
-**Modular Linux sender + PySide6 GUI for TURMO / UsbMonitor / Turing-style 3.5" USB serial screens**
+**Server dashboard and media sender for TURMO / Turing-style 3.5" USB screens on Linux**
 
 [![CI](https://github.com/ncorrea-13/turmo-screen/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ncorrea-13/turmo-screen/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white)](https://www.python.org)
@@ -13,99 +13,74 @@
 
 </div>
 
----
+Sends a system dashboard, images, GIFs, test patterns, or a live view of your servers
+(via [Heimdall](https://github.com/kinncj/Heimdall)) to a USB serial screen over the RevA protocol.
 
-Sends a system dashboard, static images, test patterns, or a live view of your other
-homelab machines (via [Heimdall](https://github.com/kinncj/Heimdall)) to a small USB serial screen over the RevA protocol. Non-commercial, personal-use project.
+<p align="center">
+  <img src="./pictures/fleet-landscape.png" alt="Server dashboard" width="480">
+</p>
 
-Tested screen profile:
+Unofficial project, not affiliated with TURMO or the screen's manufacturer.
 
-| Port           | Baud      | Protocol | Framebuffer | Pixel format |
-| -------------- | --------- | -------- | ------------ | ------------ |
-| `/dev/ttyACM0` | `4000000` | `reva`   | `320x480`    | `rgb565le`   |
-
-## Stack
-
-| Layer          | Tech                                            |
-| -------------- | ------------------------------------------------ |
-| Language       | Python 3.14                                      |
-| GUI            | PySide6 (desktop only, not in the container image) |
-| Image/pixel    | Pillow                                           |
-| Serial         | pyserial                                         |
-| Remote metrics | [Heimdall](https://github.com/kinncj/Heimdall) (`heimdall-cli`, external binary) |
-| Container      | Podman/Docker, `python:3.14-alpine`              |
-
-More: [`ARCHITECTURE.md`](ARCHITECTURE.md).
+Tested screen: `/dev/ttyACM0`, 4000000 baud, `reva`, 320x480, `rgb565le`.
 
 ## Quick start
 
 ```bash
 git clone https://github.com/ncorrea-13/turmo-screen.git
 cd turmo-screen
-./scripts/install.sh        # creates .venv, installs requirements.txt
+./scripts/install.sh    # creates .venv, installs requirements.txt
 ./scripts/run_gui.sh
 ```
 
-If the screen gives a permission error:
+Permission error on the port? `sudo usermod -aG dialout "$USER"` (`uucp` on Arch) and re-login.
+
+## Usage
+
+`turmo_lite.py` is the CLI, `turmo_gui.py` the GUI. Everything lives in `turmo/`.
 
 ```bash
-sudo chmod a+rw /dev/ttyACM0
+python turmo_lite.py --test-pattern --once
+python turmo_lite.py --image pic.png --fit contain --once
+python turmo_lite.py --gif assets/sample_spinner.gif --gif-loop --gif-fps 5
+python turmo_lite.py --gif assets/sample_spinner.gif --dry-run frame.png   # save first frame, no send
+python turmo_lite.py --help
 ```
 
-Permanent fix:
+Full-screen GIFs are slow (~307 KB/frame). Keep them small, 3-8 FPS.
 
-```bash
-sudo usermod -aG dialout "$USER"
-sudo usermod -aG uucp "$USER"
-reboot
-```
+## Server dashboard
 
-`turmo_lite.py`/`turmo_gui.py` are the CLI/GUI entry points; real implementation lives in `turmo/`.
-
-## Homelab dashboard (other machines)
-
-Instead of this host's own metrics, show live stats from every machine in your homelab:
+Live CPU/RAM/disk/temp for every server reporting to a Heimdall hub. Multi-server is supported: one hub, any number of daemons, one card per host.
 
 ```bash
 python turmo_lite.py --fleet --width 480 --height 320 --orientation landscape
-python turmo_lite.py --fleet --width 480 --height 320 --orientation landscape --fleet-bg ~/wallpaper.jpg   # optional dimmed background image
+python turmo_lite.py --fleet ... --fleet-bg ~/wallpaper.jpg   # optional dimmed background
 ```
 
-Reads `HEIMDALL_HUB` (default `localhost:9090`) and `HEIMDALL_TOKEN` from the environment;
-needs `heimdall-cli` on `$PATH`. See [Development](#development-container) /
-[Production](#production-container) below for the containerized setup.
+Needs `heimdall-cli` on `$PATH` plus `HEIMDALL_HUB` (default `localhost:9090`) and `HEIMDALL_TOKEN`
+in the environment. Bars go yellow at 65% and red at 85%. More renders in [`pictures/`](pictures/).
 
-### Screenshots
+Hosts that ever reported stay on screen as offline when the hub drops them. Known ids live in
+`$TURMO_FLEET_CACHE` (default `~/.cache/turmo/fleet.json`); delete an id there to forget a decommissioned host.
 
-Renders of the frame sent to the screen, generated from sample data (`python scripts/gen_screenshots.py`), not photos of the device. Bars turn yellow from 65% and red from 85%, and the header pill shows how many hosts are online.
+Cards share the screen height, so around 4 hosts fit in landscape (480x320) and 7 in portrait (320x480). Beyond that, rows overflow.
 
-<p align="center">
-  <img src="./pictures/fleet-landscape.png" alt="Fleet, all hosts online" width="480">
-</p>
+### Heimdall setup
 
-<p align="center">
-  <img src="./pictures/fleet-degraded.png" alt="Fleet, some hosts down or hot" width="480">
-</p>
+Hub, once, on any host (single static binary, use `_arm64` on ARM):
 
-<p align="center">
-  <img src="./pictures/fleet-background.png" alt="Fleet with --fleet-bg" width="480">
-</p>
+```bash
+curl -fsSL https://github.com/kinncj/Heimdall/releases/download/v2.7.4/heimdall-hub_linux_amd64 -o /usr/local/bin/heimdall-hub
+chmod +x /usr/local/bin/heimdall-hub
+heimdall-hub --listen :9090
+```
 
-<p align="center">
-  <img src="./pictures/fleet-portrait.png" alt="Fleet, portrait" width="320">
-</p>
-
-### Daemon setup on each host
-
-On every machine you want turmo to show, run `heimdall-daemon` pointed at the hub. Keep the
-token out of the command line (same reasoning as the fix in `fetch_fleet_hosts`) — use an
-env file, not `--token`:
+Daemon, on every server to monitor. Keep the token in an env file, not on the command line:
 
 ```bash
 mkdir -p ~/.config/heimdall
-printf 'HEIMDALL_TOKEN=<same-token-as-the-hub>\n' > ~/.config/heimdall/daemon.env
-chmod 600 ~/.config/heimdall/daemon.env
-
+printf 'HEIMDALL_TOKEN=<hub-token>\n' > ~/.config/heimdall/daemon.env && chmod 600 ~/.config/heimdall/daemon.env
 curl -fsSL https://github.com/kinncj/Heimdall/releases/download/v2.7.4/heimdall-daemon_linux_<arch> -o ~/.local/bin/heimdall-daemon
 chmod +x ~/.local/bin/heimdall-daemon
 ```
@@ -127,134 +102,42 @@ WantedBy=default.target
 
 ```bash
 systemctl --user enable --now heimdall-daemon.service
-loginctl enable-linger "$USER"   # starts on boot without an active login session
+loginctl enable-linger "$USER"   # start on boot without login
 ```
 
-TLS (`--tls`/`--tls-ca`) is optional here if the hub is only reachable over Tailscale — the
-mesh already encrypts the transport. Add it if the hub is reachable over a less trusted network.
+TLS (`--tls`/`--tls-ca`) is optional if the hub is only reachable over Tailscale. Add it on less trusted networks.
 
-## GIF support
+## Containers
 
-GUI: **Open GIF** → choose a `.gif` → set **GIF FPS** (`3–8` recommended) → **Play GIF** → **Stop** to end the loop.
-
-Full-screen GIFs are slow: 320×480 RGB565 is ~307 KB/frame. Smaller/lower-FPS GIFs work better.
+Headless image (no GUI), default command is `--fleet --port /dev/ttyACM0 --width 480 --height 320 --orientation landscape`.
+CI pushes it to `ghcr.io/ncorrea-13/turmo-screen` (`latest`, `<branch>`, `<sha>`).
 
 ```bash
-python turmo_lite.py --gif assets/sample_spinner.gif --gif-loop --gif-fps 8   # loop
-python turmo_lite.py --gif assets/sample_spinner.gif --gif-fps 5              # one cycle
-python turmo_lite.py --gif assets/sample_spinner.gif --dry-run gif_first.png  # save first frame, no send
-```
-
-## Image examples
-
-```bash
-python turmo_lite.py --image your_image.png --fit contain --once
-```
-
-`--pink-bg`/`--green-to-bg`/`--red-to-blue`/`--force-black` are optional color-cleanup
-flags for images with a chroma-key background; see `python turmo_lite.py --help`.
-
-## Test pattern
-
-```bash
-python turmo_lite.py --test-pattern --once
-```
-
-## Development (container)
-
-`deploy/compose.dev.yaml` builds `heimdall-hub` + `heimdall-daemon` (self-monitoring the dev
-container, just to have something to display) + `turmo` from local sources — no image
-registry needed:
-
-```bash
+# dev: builds hub + daemon + turmo from local sources
 podman-compose -f deploy/compose.dev.yaml up --build
-```
 
-Rebuild after code changes with `--build` again. Needs `/dev/ttyACM0` present on the host.
-
-## Production (container)
-
-CI builds and pushes the `turmo` image on every push to `main` (see `.github/workflows/ci.yml`),
-tagged `latest`, `<branch>`, and `<sha>` at `ghcr.io/<owner>/<repo>`. `heimdall-hub` is not built
-by CI — it assumes a real Heimdall hub is already running on the network.
-
-### Heimdall hub server (once, wherever the fleet reports to)
-
-It's a single static binary — no container needed. Stand it up once, on whatever host acts as
-the fleet's central point:
-
-```bash
-curl -fsSL https://github.com/kinncj/Heimdall/releases/download/v2.7.4/heimdall-hub_linux_amd64 -o /usr/local/bin/heimdall-hub
-chmod +x /usr/local/bin/heimdall-hub
-/usr/local/bin/heimdall-hub --listen :9090
-```
-
-Use `heimdall-hub_linux_arm64` on arm64 hosts. Run it under a systemd unit (or any process
-supervisor) so it survives reboots. See the [Heimdall project](https://github.com/kinncj/Heimdall)
-for hub configuration (token, storage, etc). `deploy/heimdall-hub.Containerfile` still exists if
-you specifically want it containerized (that's what `deploy/compose.dev.yaml` uses).
-
-### Each client (one per screen)
-
-`deploy/compose.prod.yaml` runs a single `turmo` client, pointed at that hub:
-
-```yaml
-services:
-  turmo:
-    image: ghcr.io/ncorrea-13/turmo-screen:latest
-    container_name: turmo
-    restart: unless-stopped
-    devices:
-      - /dev/ttyACM0:/dev/ttyACM0
-    environment:
-      - HEIMDALL_HUB=${HEIMDALL_HUB}
-      - HEIMDALL_TOKEN=${HEIMDALL_TOKEN}
-    logging:
-      driver: journald
-```
-
-```bash
+# prod: one container per screen, pointed at your existing hub
 HEIMDALL_HUB=<hub-host>:9090 HEIMDALL_TOKEN=<token> podman-compose -f deploy/compose.prod.yaml up -d
 ```
 
-Deploy this same compose on every host with a screen attached — one `turmo` container per screen,
-all pointed at the same `HEIMDALL_HUB`.
+Override `command:` in the compose file for another mode. Omit `HEIMDALL_TOKEN` if the hub has none.
 
-Notes:
-
-- Swap the image tag/registry once the pipeline publishes the real one.
-- `HEIMDALL_HUB`/`HEIMDALL_TOKEN` are read by `turmo/metrics.py:fetch_fleet_hosts`; omit `HEIMDALL_TOKEN` if the hub has no token configured.
-- Default entrypoint runs `--fleet --port /dev/ttyACM0 --width 480 --height 320 --orientation landscape` (see `deploy/Containerfile`); override `command:` for a different mode.
-- No GUI in this image (`PySide6` dropped, see `requirements-docker.txt`) — headless dashboard only.
-
-## Testing
+## Tests
 
 ```bash
 python -m unittest discover tests -v
 ```
 
-No hardware needed — serial I/O is mocked. Covers parsing, pixel encoding, RevA coordinate
-packing, and the Heimdall fetch/render error paths.
+No hardware needed, serial is mocked.
 
-## Project structure
+## Docs
 
-Real implementation lives in `turmo/`, entry points (`turmo_lite.py`/`turmo_gui.py`) are thin
-backward-compatible wrappers. `scripts/` holds the install/run/test-hardware helpers, `deploy/`
-holds the Containerfiles and compose files, `assets/` holds sample media. Full layout and
-send-pipeline notes: [`ARCHITECTURE.md`](ARCHITECTURE.md).
-
-## About
-
-Personal, non-commercial project. This codebase's own provenance (before the RevA protocol
-was traced to its real source, and before the Heimdall/container work in this repo) is
-murky — see [`NOTICE.md`](NOTICE.md) for what's actually known.
+[`ARCHITECTURE.md`](ARCHITECTURE.md) for layout and send pipeline. [`NOTICE.md`](NOTICE.md) for provenance and third-party licenses.
 
 ## License
 
-GPL-3.0-or-later — see [LICENSE](LICENSE). The RevA serial protocol in
-`turmo/serial_device.py` is reimplemented from
-[turing-smart-screen-python](https://github.com/mathoudebine/turing-smart-screen-python)
-by Matthieu Houdebine (GPL-3.0-or-later); as a combined work, this repo carries the same
-license. Full provenance: [`NOTICE.md`](NOTICE.md).
+GPL-3.0-or-later, see [LICENSE](LICENSE). The RevA protocol in `turmo/serial_device.py` is reimplemented from
+[turing-smart-screen-python](https://github.com/mathoudebine/turing-smart-screen-python) (GPL-3.0-or-later).
+Heimdall is **AGPL-3.0**. It runs as an unmodified external binary and is not bundled, see [`NOTICE.md`](NOTICE.md).
 
 **Nicolás Correa** — [github.com/ncorrea-13](https://github.com/ncorrea-13)
