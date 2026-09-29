@@ -107,6 +107,17 @@ class RenderFleetDashboardTests(unittest.TestCase):
             img = render_fleet_dashboard(320, 480)
         self.assertEqual(img.size, (320, 480))
 
+    def test_four_hosts_fit_landscape_with_background(self):
+        import os, tempfile
+        from PIL import Image
+        hosts = [{"id": f"h{i}", "state": "online", "metrics": {"cpu.util": 10 * i}} for i in range(4)]
+        with tempfile.TemporaryDirectory() as d:
+            bg = os.path.join(d, "bg.png")
+            Image.new("RGB", (64, 64), (120, 40, 200)).save(bg)
+            with patch("turmo.renderers.fetch_fleet_hosts", return_value=hosts):
+                img = render_fleet_dashboard(480, 320, bg_image=bg)
+        self.assertEqual(img.size, (480, 320))
+
     def test_renders_with_hosts(self):
         hosts = [
             {"id": "b", "state": "offline", "metrics": {}},
