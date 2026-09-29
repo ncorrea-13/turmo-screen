@@ -75,6 +75,26 @@ Reads `HEIMDALL_HUB` (default `localhost:9090`) and `HEIMDALL_TOKEN` from the en
 needs `heimdall-cli` on `$PATH`. See [Development](#development-container) /
 [Production](#production-container) below for the containerized setup.
 
+### Screenshots
+
+Renders of the frame sent to the screen, generated from sample data (`python scripts/gen_screenshots.py`), not photos of the device. Bars turn yellow from 65% and red from 85%, and the header pill shows how many hosts are online.
+
+<p align="center">
+  <img src="./pictures/fleet-landscape.png" alt="Fleet, all hosts online" width="480">
+</p>
+
+<p align="center">
+  <img src="./pictures/fleet-degraded.png" alt="Fleet, some hosts down or hot" width="480">
+</p>
+
+<p align="center">
+  <img src="./pictures/fleet-background.png" alt="Fleet with --fleet-bg" width="480">
+</p>
+
+<p align="center">
+  <img src="./pictures/fleet-portrait.png" alt="Fleet, portrait" width="320">
+</p>
+
 ### Daemon setup on each host
 
 On every machine you want turmo to show, run `heimdall-daemon` pointed at the hub. Keep the
