@@ -61,6 +61,9 @@ python turmo_lite.py --fleet ... --fleet-bg ~/wallpaper.jpg   # optional dimmed 
 Needs `heimdall-cli` on `$PATH` plus `HEIMDALL_HUB` (default `localhost:9090`) and `HEIMDALL_TOKEN`
 in the environment. Bars go yellow at 65% and red at 85%. More renders in [`pictures/`](pictures/).
 
+Hosts that ever reported stay on screen as offline when the hub drops them. Known ids live in
+`$TURMO_FLEET_CACHE` (default `~/.cache/turmo/fleet.json`); delete an id there to forget a decommissioned host.
+
 Cards share the screen height, so around 4 hosts fit in landscape (480x320) and 7 in portrait (320x480). Beyond that, rows overflow.
 
 ### Heimdall setup

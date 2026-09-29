@@ -60,6 +60,9 @@ python turmo_lite.py --fleet ... --fleet-bg ~/wallpaper.jpg   # fondo opcional a
 Necesita `heimdall-cli` en el `$PATH` más `HEIMDALL_HUB` (default `localhost:9090`) y `HEIMDALL_TOKEN`
 en el entorno. Las barras pasan a amarillo en 65% y a rojo en 85%. Más renders en [`pictures/`](pictures/).
 
+Los hosts que alguna vez reportaron quedan en pantalla como offline si el hub los descarta. Los ids conocidos viven en
+`$TURMO_FLEET_CACHE` (default `~/.cache/turmo/fleet.json`); borra un id ahí para olvidar un host dado de baja.
+
 Las cards se reparten el alto de la pantalla: entran ~4 hosts en landscape (480x320) y ~7 en portrait (320x480). Más que eso, las filas se desbordan.
 
 ### Setup de Heimdall
