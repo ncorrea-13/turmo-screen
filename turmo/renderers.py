@@ -8,7 +8,7 @@ from typing import Optional
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
-from .metrics import collect_metrics, fetch_fleet_hosts
+from .metrics import collect_metrics, fetch_fleet_hosts, remember_hosts
 
 STATE_COLORS = {
     "online": (70, 210, 130),
@@ -113,7 +113,7 @@ def _fleet_base(width: int, height: int, bg_image: Optional[str]) -> Image.Image
     return Image.blend(photo, Image.new("RGB", (width, height), (0, 0, 0)), 0.55)  # dim so text stays readable
 
 def render_fleet_dashboard(width: int, height: int, title: str = "REALMS", bg_image: Optional[str] = None) -> Image.Image:
-    hosts = sorted(fetch_fleet_hosts(), key=lambda h: h.get("id", ""))
+    hosts = sorted(remember_hosts(fetch_fleet_hosts()), key=lambda h: h.get("id", ""))
     base = _fleet_base(width, height, bg_image)
     card_alpha = 170 if bg_image else 255
     card_fill = (16, 23, 38, card_alpha)
