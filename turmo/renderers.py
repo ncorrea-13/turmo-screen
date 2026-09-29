@@ -112,7 +112,7 @@ def _fleet_base(width: int, height: int, bg_image: Optional[str]) -> Image.Image
     photo = ImageOps.fit(Image.open(bg_image).convert("RGB"), (width, height), Image.Resampling.LANCZOS)
     return Image.blend(photo, Image.new("RGB", (width, height), (0, 0, 0)), 0.55)  # dim so text stays readable
 
-def render_fleet_dashboard(width: int, height: int, title: str = "Homelab Fleet", bg_image: Optional[str] = None) -> Image.Image:
+def render_fleet_dashboard(width: int, height: int, title: str = "REALMS", bg_image: Optional[str] = None) -> Image.Image:
     hosts = sorted(fetch_fleet_hosts(), key=lambda h: h.get("id", ""))
     base = _fleet_base(width, height, bg_image)
     card_alpha = 170 if bg_image else 255
@@ -147,9 +147,13 @@ def render_fleet_dashboard(width: int, height: int, title: str = "Homelab Fleet"
         draw.text((26, header_bottom + 16), "No hosts (hub unreachable)", font=small_font, fill=(200, 120, 120))
         return img
     online = sum(1 for h in hosts if h.get("state") == "online")
-    count = f"{online}/{len(hosts)} online"
-    count_color = STATE_COLORS["online"] if online == len(hosts) else STATE_COLORS["stale"]
-    draw.text((width - 20 - draw.textlength(count, font=small_font), 14), count, font=small_font, fill=count_color)
+    count = f"{online}/{len(hosts)}"
+    count_color = STATE_COLORS["online"] if online == len(hosts) else STATE_COLORS["stale"] if online else STATE_COLORS["offline"]
+    pill_w = int(draw.textlength(count, font=title_font)) + 22
+    pill = (width - 18 - pill_w, 12, width - 18, header_bottom - 4)
+    tint = tuple(int(16 + (c - 16) * 0.22) for c in count_color)
+    draw.rounded_rectangle(pill, radius=(pill[3] - pill[1]) // 2, fill=tint, outline=count_color, width=1)
+    draw.text(((pill[0] + pill[2]) // 2, (pill[1] + pill[3]) // 2), count, font=title_font, fill=count_color, anchor="mm")
 
     # Pass 2: content.
     for i, host in enumerate(hosts):
