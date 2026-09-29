@@ -76,6 +76,26 @@ Lee `HEIMDALL_HUB` (default `localhost:9090`) y `HEIMDALL_TOKEN` del entorno; ne
 `heimdall-cli` en el `$PATH`. Ver [Desarrollo](#desarrollo-container) /
 [Producción](#producción-container) más abajo para el setup en container.
 
+### Capturas
+
+Renders del frame que se envía a la pantalla, generados con datos de ejemplo (`python scripts/gen_screenshots.py`), no fotos del dispositivo. Las barras pasan a amarillo desde 65% y a rojo desde 85%, y la píldora del header muestra cuántos hosts están online.
+
+<p align="center">
+  <img src="./pictures/fleet-landscape.png" alt="Fleet, todos online" width="480">
+</p>
+
+<p align="center">
+  <img src="./pictures/fleet-degraded.png" alt="Fleet, hosts caídos o al límite" width="480">
+</p>
+
+<p align="center">
+  <img src="./pictures/fleet-background.png" alt="Fleet con --fleet-bg" width="480">
+</p>
+
+<p align="center">
+  <img src="./pictures/fleet-portrait.png" alt="Fleet, portrait" width="320">
+</p>
+
 ### Setup del daemon en cada máquina
 
 En cada máquina que quieras que turmo muestre, corré `heimdall-daemon` apuntando al hub.
