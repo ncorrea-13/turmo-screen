@@ -68,6 +68,7 @@ Instead of this host's own metrics, show live stats from every machine in your h
 
 ```bash
 python turmo_lite.py --fleet --width 480 --height 320 --orientation landscape
+python turmo_lite.py --fleet --width 480 --height 320 --orientation landscape --fleet-bg ~/wallpaper.jpg   # optional dimmed background image
 ```
 
 Reads `HEIMDALL_HUB` (default `localhost:9090`) and `HEIMDALL_TOKEN` from the environment;

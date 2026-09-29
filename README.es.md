@@ -69,6 +69,7 @@ En vez de las métricas de este host, mostrá el estado en vivo de cada máquina
 
 ```bash
 python turmo_lite.py --fleet --width 480 --height 320 --orientation landscape
+python turmo_lite.py --fleet --width 480 --height 320 --orientation landscape --fleet-bg ~/wallpaper.jpg   # fondo opcional (imagen atenuada)
 ```
 
 Lee `HEIMDALL_HUB` (default `localhost:9090`) y `HEIMDALL_TOKEN` del entorno; necesita
