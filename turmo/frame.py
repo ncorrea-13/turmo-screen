@@ -32,7 +32,7 @@ def make_frame(args: argparse.Namespace) -> Image.Image:
     elif args.test_pattern:
         img = render_test_pattern(args.width, args.height)
     elif args.fleet:
-        img = render_fleet_dashboard(args.width, args.height)
+        img = render_fleet_dashboard(args.width, args.height, bg_image=args.fleet_bg)
     else:
         img = render_dashboard(args.width, args.height, args.title)
 

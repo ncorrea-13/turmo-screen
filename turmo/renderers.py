@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
+from typing import Optional
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from .metrics import collect_metrics, fetch_fleet_hosts
 
@@ -96,52 +97,98 @@ def humanize_uptime(seconds) -> str:
 def _fmt_pct(value) -> str:
     return f"{value:.0f}%" if isinstance(value, (int, float)) else "--"
 
-def render_fleet_dashboard(width: int, height: int, title: str = "Homelab Fleet") -> Image.Image:
-    hosts = sorted(fetch_fleet_hosts(), key=lambda h: h.get("id", ""))
-    img = Image.new("RGB", (width, height), (7, 10, 18))
-    draw = ImageDraw.Draw(img)
+def _level_color(pct) -> tuple[int, int, int]:
+    if not isinstance(pct, (int, float)):
+        return (70, 80, 100)
+    if pct >= 85:
+        return (220, 70, 70)
+    if pct >= 65:
+        return (230, 190, 60)
+    return (70, 140, 255)
 
-    title_font = safe_font(max(13, width // 26), bold=True)
-    name_font = safe_font(max(13, width // 22), bold=True)
-    small_font = safe_font(max(10, width // 32))
+def _fleet_base(width: int, height: int, bg_image: Optional[str]) -> Image.Image:
+    if not bg_image:
+        return Image.new("RGB", (width, height), (7, 10, 18))
+    photo = ImageOps.fit(Image.open(bg_image).convert("RGB"), (width, height), Image.Resampling.LANCZOS)
+    return Image.blend(photo, Image.new("RGB", (width, height), (0, 0, 0)), 0.55)  # dim so text stays readable
+
+def render_fleet_dashboard(width: int, height: int, title: str = "Homelab Fleet", bg_image: Optional[str] = None) -> Image.Image:
+    hosts = sorted(fetch_fleet_hosts(), key=lambda h: h.get("id", ""))
+    base = _fleet_base(width, height, bg_image)
+    card_alpha = 170 if bg_image else 255
+    card_fill = (16, 23, 38, card_alpha)
+    outline = (48, 70, 110, 255)
+
+    unit = min(width, height * 2 // 3)  # fonts follow the short side so landscape stays compact
+    title_font = safe_font(max(13, unit // 26), bold=True)
+    name_font = safe_font(max(13, unit // 22), bold=True)
+    small_font = safe_font(max(10, unit // 32))
 
     header_bottom = 38
-    draw.rounded_rectangle((12, 8, width - 12, header_bottom), radius=12, fill=(16, 23, 38), outline=(48, 70, 110), width=2)
-    draw.text((20, 12), title, font=title_font, fill=(245, 248, 255))
+    top = header_bottom + 8
+    # Card content: name row + bars (+ optional third text line when there is room).
+    compact_h = 6 + name_font.size + 6 + small_font.size + 5 + 6 + 6
+    full_h = compact_h + small_font.size + 7
+    row_h = min(max(compact_h + 6, (height - top - 6) // max(1, len(hosts))), 120)
+    compact = row_h - 6 < full_h
 
+    # Pass 1: translucent cards on an overlay, so a background image shows through.
+    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    od = ImageDraw.Draw(overlay)
+    od.rounded_rectangle((12, 8, width - 12, header_bottom), radius=12, fill=card_fill, outline=outline, width=2)
+    for i in range(len(hosts)):
+        y = top + i * row_h
+        od.rounded_rectangle((16, y, width - 16, y + row_h - 6), radius=10, fill=card_fill, outline=outline, width=2)
+    img = Image.alpha_composite(base.convert("RGBA"), overlay).convert("RGB")
+    draw = ImageDraw.Draw(img)
+
+    draw.text((20, 12), title, font=title_font, fill=(245, 248, 255))
     if not hosts:
         draw.text((26, header_bottom + 16), "No hosts (hub unreachable)", font=small_font, fill=(200, 120, 120))
         return img
+    online = sum(1 for h in hosts if h.get("state") == "online")
+    count = f"{online}/{len(hosts)} online"
+    count_color = STATE_COLORS["online"] if online == len(hosts) else STATE_COLORS["stale"]
+    draw.text((width - 20 - draw.textlength(count, font=small_font), 14), count, font=small_font, fill=count_color)
 
-    top = header_bottom + 8
-    row_min = 12 + name_font.size + small_font.size * 2 + 10
-    row_h = max(row_min, (height - top - 6) // len(hosts))
-    y = top
-    for host in hosts:
+    # Pass 2: content.
+    for i, host in enumerate(hosts):
+        y = top + i * row_h
         state = host.get("state", "unknown")
         color = STATE_COLORS.get(state, (120, 130, 150))
         metrics = host.get("metrics") or {}
+        dim = state == "offline"
+        name_fill = (120, 130, 150) if dim else (235, 240, 255)
 
-        draw.rounded_rectangle((16, y, width - 16, y + row_h - 6), radius=10, fill=(16, 23, 38), outline=(48, 70, 110), width=2)
-        dot_y = y + 14
-        draw.ellipse((26, dot_y, 36, dot_y + 10), fill=color)
-        draw.text((42, y + 6), str(host.get("id", "?")), font=name_font, fill=(235, 240, 255))
-
-        line2_y = y + 6 + name_font.size + 2
-        stat = f"CPU {_fmt_pct(metrics.get('cpu.util'))}  MEM {_fmt_pct(metrics.get('mem.used'))}  DISK {_fmt_pct(metrics.get('disk.used'))}"
-        draw.text((42, line2_y), stat, font=small_font, fill=(190, 210, 240))
-
+        draw.ellipse((26, y + 12, 36, y + 22), fill=color)
+        draw.text((42, y + 4), str(host.get("id", "?")), font=name_font, fill=name_fill)
+        up = humanize_uptime(metrics.get("host.uptime"))
         temp = metrics.get("temp.pkg")
         load = metrics.get("cpu.load")
         latency = metrics.get("net.latency")
         temp_s = f"{temp:.0f}°C" if isinstance(temp, (int, float)) else "--"
         load_s = f"{load:.2f}" if isinstance(load, (int, float)) else "--"
         lat_s = f"{latency:.0f}ms" if isinstance(latency, (int, float)) else "--"
-        line3_y = line2_y + small_font.size + 3
-        extra = f"UP {humanize_uptime(metrics.get('host.uptime'))}  TEMP {temp_s}  LOAD {load_s}  NET {lat_s}"
-        draw.text((42, line3_y), extra, font=small_font, fill=(140, 160, 190))
+        extras = f"{temp_s}  LOAD {load_s}  NET {lat_s}"
+        right = f"{extras}   {up}" if compact else up
+        draw.text((width - 26 - draw.textlength(right, font=small_font), y + 6 + (name_font.size - small_font.size)), right, font=small_font, fill=(140, 160, 190))
 
-        y += row_h
+        bars = [("CPU", metrics.get("cpu.util")), ("MEM", metrics.get("mem.used")), ("DSK", metrics.get("disk.used"))]
+        x0, gap = 26, 8
+        col_w = (width - 26 - x0 - gap * 2) // 3
+        label_y = y + 6 + name_font.size + 6
+        bar_y = label_y + small_font.size + 5
+        for j, (label, value) in enumerate(bars):
+            cx = x0 + j * (col_w + gap)
+            draw.text((cx, label_y), f"{label} {_fmt_pct(value)}", font=small_font, fill=(190, 210, 240))
+            draw.rounded_rectangle((cx, bar_y, cx + col_w, bar_y + 6), radius=3, fill=(30, 40, 60))
+            if isinstance(value, (int, float)):
+                fill_w = int(col_w * max(0.0, min(100.0, value)) / 100)
+                if fill_w >= 3:
+                    draw.rounded_rectangle((cx, bar_y, cx + fill_w, bar_y + 6), radius=3, fill=_level_color(value))
+
+        if not compact:
+            draw.text((26, bar_y + 6 + 7), extras, font=small_font, fill=(140, 160, 190))
 
     return img
 
