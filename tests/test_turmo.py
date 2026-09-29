@@ -14,7 +14,7 @@ from PIL import Image
 
 from turmo.codecs import encode_pixels
 from turmo.config import parse_bg
-from turmo.metrics import fetch_fleet_hosts
+from turmo.metrics import fetch_fleet_hosts, remember_hosts
 from turmo.renderers import render_fleet_dashboard
 from turmo.serial_device import TurmoSerial
 
@@ -101,7 +101,24 @@ class FetchFleetHostsTests(unittest.TestCase):
             self.assertEqual(fetch_fleet_hosts(hub="x:9090"), [])
 
 
+class RememberHostsTests(unittest.TestCase):
+    def test_missing_host_comes_back_offline(self):
+        import os, tempfile
+        with tempfile.TemporaryDirectory() as d, patch.dict(os.environ, {"TURMO_FLEET_CACHE": os.path.join(d, "f.json")}):
+            remember_hosts([{"id": "a", "state": "online"}, {"id": "b", "state": "online"}])
+            out = {h["id"]: h["state"] for h in remember_hosts([{"id": "a", "state": "online"}])}
+        self.assertEqual(out, {"a": "online", "b": "offline"})
+
+
 class RenderFleetDashboardTests(unittest.TestCase):
+    def setUp(self):
+        import os, tempfile
+        self._d = tempfile.TemporaryDirectory()
+        p = patch.dict(os.environ, {"TURMO_FLEET_CACHE": os.path.join(self._d.name, "f.json")})
+        p.start()
+        self.addCleanup(p.stop)
+        self.addCleanup(self._d.cleanup)
+
     def test_empty_fleet_does_not_crash(self):
         with patch("turmo.renderers.fetch_fleet_hosts", return_value=[]):
             img = render_fleet_dashboard(320, 480)
