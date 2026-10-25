@@ -23,6 +23,10 @@ Proyecto no oficial, sin afiliación con TURMO ni con el fabricante de la pantal
 
 Pantalla probada: `/dev/ttyACM0`, 4000000 baud, `reva`, 320x480, `rgb565le`.
 
+## Estado
+
+Estable / Funcionalmente completo. Este software hace todo lo que necesito. Lo mantendré funcionando si se rompen las dependencias, pero no hay nuevas funcionalidades planeadas. Los issues y PRs siguen siendo bienvenidos.
+
 ## Inicio rápido
 
 ```bash
