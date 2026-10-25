@@ -24,6 +24,10 @@ Unofficial project, not affiliated with TURMO or the screen's manufacturer.
 
 Tested screen: `/dev/ttyACM0`, 4000000 baud, `reva`, 320x480, `rgb565le`.
 
+## Status
+
+Stable / Feature-complete. This software does everything I need it to do. I'll keep it working if dependencies break, but no new features are planned. Issues and PRs are still welcome.
+
 ## Quick start
 
 ```bash
